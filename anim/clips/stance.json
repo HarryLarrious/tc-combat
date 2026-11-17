@@ -1,0 +1,17 @@
+{
+ "name": "stance",
+ "kind": "loop",
+ "length": 60,
+ "interp": "spline",
+ "planted": true,
+ "counter": true,
+ "fade": 5,
+ "samples": 0,
+ "emote": false,
+ "mask": [],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-6, -25, 0], "shoulderR": [35, 0, 12], "shoulderL": [25, 0, -12], "hipR": [-10, 0, 5], "hipL": [14, 0, -4]}},
+  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [-4, -25, 0], "shoulderR": [39, 0, 13], "shoulderL": [29, 0, -13], "hipR": [-10, 0, 5], "hipL": [14, 0, -4]}}
+ ]
+}

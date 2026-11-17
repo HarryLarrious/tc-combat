@@ -1,0 +1,19 @@
+{
+ "name": "dance",
+ "kind": "loop",
+ "length": 40,
+ "interp": "spline",
+ "planted": true,
+ "counter": true,
+ "fade": 4,
+ "samples": 0,
+ "emote": true,
+ "mask": [],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-4, 20, 6], "shoulderR": [20, 0, 120], "shoulderL": [20, 0, -60], "hipR": [15, 0, 6], "hipL": [-5, 0, -4]}},
+  {"t": 0.25, "lift": 0, "ease": "smooth", "pose": {"root": [-8, 0, 0], "shoulderR": [30, 0, 60], "shoulderL": [30, 0, -60], "hipR": [5, 0, 5], "hipL": [5, 0, -5]}},
+  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [-4, -20, -6], "shoulderL": [20, 0, -120], "shoulderR": [20, 0, 60], "hipL": [15, 0, -6], "hipR": [-5, 0, 4]}},
+  {"t": 0.75, "lift": 0, "ease": "smooth", "pose": {"root": [-8, 0, 0], "shoulderL": [30, 0, -60], "shoulderR": [30, 0, 60], "hipL": [5, 0, -5], "hipR": [5, 0, 5]}}
+ ]
+}

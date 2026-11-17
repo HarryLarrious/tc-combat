@@ -1,0 +1,19 @@
+{
+ "name": "crouch",
+ "kind": "cycle",
+ "length": 1.3,
+ "interp": "spline",
+ "planted": true,
+ "counter": true,
+ "fade": 5,
+ "samples": 0,
+ "emote": false,
+ "mask": [],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-22, -4, 0], "shoulderR": [18, 0, 10], "shoulderL": [42, 0, -10], "hipR": [22, 0, 0], "hipL": [-20, 0, 0]}},
+  {"t": 0.25, "lift": 0, "ease": "smooth", "pose": {"root": [-22, 0, 0], "shoulderR": [30, 0, 10], "shoulderL": [30, 0, -10], "hipL": [4, 0, 0], "hipLPos": [0, 1.2, 0]}},
+  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [-22, 4, 0], "shoulderL": [18, 0, -10], "shoulderR": [42, 0, 10], "hipL": [22, 0, 0], "hipR": [-20, 0, 0]}},
+  {"t": 0.75, "lift": 0, "ease": "smooth", "pose": {"root": [-22, 0, 0], "shoulderL": [30, 0, -10], "shoulderR": [30, 0, 10], "hipR": [4, 0, 0], "hipRPos": [0, 1.2, 0]}}
+ ]
+}

@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>R6 Animation Editor</title>
+<style>
+:root {
+  --bg: #15171c; --panel: #1d2027; --panel2: #252932; --line: #333845; --ink: #e6e8ee;
+  --dim: #8d93a3; --accent: #f5b335; --sel: #4aa3ff; --bad: #ff6b6b; --good: #5bd28a;
+  --x: #ff6b6b; --y: #5bd28a; --z: #4aa3ff;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+  font: 13px/1.35 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+button, select, input { font: inherit; color: inherit; }
+button { background: var(--panel2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 9px; cursor: pointer; }
+button:hover { border-color: #4a5060; }
+button.primary { background: var(--accent); color: #1a1a1a; border-color: var(--accent); font-weight: 600; }
+button.on { border-color: var(--sel); color: var(--sel); }
+button:disabled { opacity: .45; cursor: default; }
+select, input[type=text], input[type=number] { background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 3px 6px; }
+input[type=number] { width: 64px; }
+input[type=checkbox] { accent-color: var(--accent); }
+.app { display: grid; grid-template-columns: 210px 1fr 300px; grid-template-rows: 44px 1fr 236px; height: 100vh; }
+header { grid-column: 1 / 4; display: flex; align-items: center; gap: 8px; padding: 0 12px;
+  background: var(--panel); border-bottom: 1px solid var(--line); }
+header h1 { font-size: 14px; margin: 0 10px 0 0; font-weight: 650; letter-spacing: .2px; }
+header .grow { flex: 1; }
+#status { color: var(--dim); max-width: 520px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#status.bad { color: var(--bad); } #status.good { color: var(--good); }
+aside { background: var(--panel); border-right: 1px solid var(--line); overflow: auto; }
+aside.right { border-right: 0; border-left: 1px solid var(--line); grid-row: 2 / 4; grid-column: 3; }
+aside.left { grid-row: 2 / 4; }
+.sec { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.sec h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--dim); margin: 0 0 8px; font-weight: 600;
+  display: flex; align-items: center; justify-content: space-between; }
+.cliplist div.grp { color: var(--dim); font-size: 11px; margin: 8px 0 3px; }
+.cliplist a { display: flex; justify-content: space-between; padding: 3px 7px; border-radius: 5px; cursor: pointer; color: var(--ink); text-decoration: none; }
+.cliplist a:hover { background: var(--panel2); }
+.cliplist a.cur { background: #2c3a52; color: #fff; }
+.cliplist a small { color: var(--dim); }
+.row { display: flex; align-items: center; gap: 6px; margin: 5px 0; }
+.row label { width: 64px; color: var(--dim); flex: none; }
+.row .grow { flex: 1; }
+.btns { display: flex; flex-wrap: wrap; gap: 5px; }
+.viewport { position: relative; grid-column: 2; grid-row: 2; overflow: hidden; }
+.viewport canvas { display: block; }
+.vbar { position: absolute; top: 8px; left: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
+.vbar button { background: rgba(29,32,39,.85); }
+.hint { position: absolute; bottom: 8px; left: 10px; color: var(--dim); font-size: 12px; pointer-events: none; }
+.selname { position: absolute; top: 8px; right: 10px; color: var(--sel); font-weight: 600; }
+.timeline { grid-column: 2; grid-row: 3; background: var(--panel); border-top: 1px solid var(--line); display: flex; flex-direction: column; }
+.tbar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.tbar .time { font-variant-numeric: tabular-nums; min-width: 150px; color: var(--dim); }
+#tl { flex: 1; width: 100%; display: block; cursor: default; }
+.joint .axis { display: grid; grid-template-columns: 18px 1fr 64px; align-items: center; gap: 6px; margin: 3px 0; }
+.joint .axis b { font-weight: 700; }
+.joint .axis b.x { color: var(--x); } .joint .axis b.y { color: var(--y); } .joint .axis b.z { color: var(--z); }
+.joint input[type=range] { width: 100%; accent-color: var(--accent); }
+.joint .sub { color: var(--dim); font-size: 11px; margin: 8px 0 2px; }
+.help { color: var(--dim); font-size: 12px; }
+.help kbd { background: var(--panel2); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; font-size: 11px; }
+textarea { width: 100%; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 5px; font: inherit; resize: vertical; }
+.dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--accent); margin-left: 6px; }
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>R6 Animation Editor</h1>
+    <span id="clipTitle"></span><span id="dirty" class="dot" hidden title="unsaved changes"></span>
+    <span class="grow"></span>
+    <span id="status"></span>
+    <button id="undo" title="Undo (Ctrl+Z)">Undo</button>
+    <button id="redo" title="Redo (Ctrl+Shift+Z)">Redo</button>
+    <button id="save" class="primary" title="Save the clip and update the game data (Ctrl+S)">Save</button>
+    <button id="send" title="Compile the plot code and place it on the plot, then switch to play mode">Send to game</button>
+  </header>
+
+  <aside class="left">
+    <div class="sec">
+      <h2>Clips <span class="btns"><button id="newClip" title="New clip">New</button><button id="dupClip" title="Duplicate this clip">Copy</button></span></h2>
+      <div class="cliplist" id="clipList"></div>
+    </div>
+    <div class="sec help">
+      <div><kbd>Space</kbd> play / pause</div>
+      <div><kbd>←</kbd> <kbd>→</kbd> step, <kbd>Shift</kbd> to the next key</div>
+      <div><kbd>K</kbd> add key, <kbd>Del</kbd> delete key</div>
+      <div><kbd>Ctrl+C</kbd> / <kbd>Ctrl+V</kbd> copy / paste a pose</div>
+      <div><kbd>M</kbd> mirror the pose left to right</div>
+      <div><kbd>1</kbd>–<kbd>6</kbd> pick a body part</div>
+      <div style="margin-top:6px">In the view: click a part to pick it, drag it to turn it (up/down: X, sideways: Y, with <kbd>Shift</kbd>: Z), drag with <kbd>Alt</kbd> to move it. Drag empty space to orbit, scroll to zoom.</div>
+    </div>
+  </aside>
+
+  <div class="viewport" id="viewport">
+    <div class="vbar">
+      <button data-view="front">Front</button>
+      <button data-view="side">Side</button>
+      <button data-view="three">3/4</button>
+      <button data-view="back">Back</button>
+      <button id="onion" title="Show the keys before and after as ghosts">Ghosts</button>
+      <button id="travel" title="Cycles: move the ground as if walking, so planted feet should stay on the grid">Ground moves</button>
+      <button id="lookAhead" class="on" title="Turn the head back against the torso, as the game does when the player looks ahead">Head looks ahead</button>
+    </div>
+    <div class="selname" id="selName"></div>
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <div class="timeline">
+    <div class="tbar">
+      <button id="play" title="Play / pause (Space)">▶ Play</button>
+      <button id="loop" class="on" title="Loop playback">Loop</button>
+      <select id="speed" title="Playback speed">
+        <option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option>
+      </select>
+      <span class="time" id="time"></span>
+      <span class="grow" style="flex:1"></span>
+      <button id="addKey" title="Add a key at the playhead (K)">+ Key</button>
+      <button id="delKey" title="Delete the selected key (Del)">− Key</button>
+      <button id="copyPose" title="Copy the pose at the playhead (Ctrl+C)">Copy pose</button>
+      <button id="pastePose" title="Paste the pose into the key at the playhead (Ctrl+V)">Paste</button>
+      <button id="mirror" title="Mirror the key's pose left to right (M)">Mirror</button>
+    </div>
+    <canvas id="tl"></canvas>
+  </div>
+
+  <aside class="right">
+    <div class="sec" id="clipSec">
+      <h2>Clip</h2>
+      <div class="row"><label>Name</label><input type="text" id="cName" class="grow"></div>
+      <div class="row"><label>Kind</label>
+        <select id="cKind" class="grow" title="cycle: loops over distance walked; loop: loops over time; once: plays once and holds the last pose">
+          <option value="once">once (plays once)</option><option value="loop">loop (over time)</option><option value="cycle">cycle (over distance)</option>
+        </select></div>
+      <div class="row"><label id="cLenLabel">Ticks</label><input type="number" id="cLength" step="1" min="0.1">
+        <label style="width:auto">Fade</label><input type="number" id="cFade" step="1" min="1" title="Crossfade ticks into this clip in the game"></div>
+      <div class="row"><label>Motion</label>
+        <select id="cInterp" class="grow" title="spline: smooth curves through the keys; ease: each key sets how the motion arrives at it">
+          <option value="ease">ease (per key)</option><option value="spline">spline (smooth curve)</option>
+        </select></div>
+      <div class="row"><label></label><label style="width:auto"><input type="checkbox" id="cPlanted"> Feet on ground</label></div>
+      <div class="row"><label></label><label style="width:auto"><input type="checkbox" id="cCounter"> Legs stay under the body</label></div>
+      <div class="row"><label></label><label style="width:auto"><input type="checkbox" id="cEmote"> Emote (<code>@e name</code>)</label></div>
+      <div class="row"><label>Notes</label></div>
+      <textarea id="cNotes" rows="2"></textarea>
+      <div class="btns" style="margin-top:6px"><button id="delClip" title="Delete this clip">Delete clip</button></div>
+    </div>
+    <div class="sec" id="keySec">
+      <h2>Key <span id="keyInfo" class="help"></span></h2>
+      <div class="row"><label>Time</label><input type="number" id="kTime" step="1"><span class="help" id="kTimeUnit"></span></div>
+      <div class="row"><label>Arrive</label>
+        <select id="kEase" class="grow" title="How the motion arrives at this key (ease clips)">
+          <option value="smooth">smooth (ease in and out)</option><option value="in">in (speeds up into it: a hit)</option>
+          <option value="out">out (slows into it: a wind-up)</option><option value="linear">linear</option>
+        </select></div>
+      <div class="row"><label>Lift</label><input type="number" id="kLift" step="0.5" title="Extra height off the ground (px)"><span class="help">px off the ground</span></div>
+    </div>
+    <div class="sec joint" id="jointSec">
+      <h2><span id="jTitle">Joint</span> <select id="jSel"></select></h2>
+      <div class="sub">Turn (degrees)</div>
+      <div id="jAng"></div>
+      <div class="sub">Move (pixels)</div>
+      <div id="jPos"></div>
+      <div class="btns" style="margin-top:8px">
+        <button id="jReset" title="Put this part back at rest">Reset part</button>
+        <button id="jMirror" title="Copy this part's pose to the other side, mirrored">Copy to other side</button>
+      </div>
+      <div class="help" id="jHelp" style="margin-top:8px"></div>
+    </div>
+  </aside>
+</div>
+<script type="module" src="editor.js"></script>
+</body>
+</html>

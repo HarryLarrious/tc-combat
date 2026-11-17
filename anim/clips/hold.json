@@ -1,0 +1,16 @@
+{
+ "name": "hold",
+ "kind": "loop",
+ "length": 1,
+ "interp": "spline",
+ "planted": true,
+ "counter": true,
+ "fade": 4,
+ "samples": 1,
+ "emote": false,
+ "mask": ["shoulderR", "shoulderRPos"],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"shoulderR": [40, 0, 12]}}
+ ]
+}

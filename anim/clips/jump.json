@@ -1,0 +1,18 @@
+{
+ "name": "jump",
+ "kind": "once",
+ "length": 8,
+ "interp": "ease",
+ "planted": false,
+ "counter": true,
+ "fade": 2,
+ "samples": 0,
+ "emote": false,
+ "mask": [],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-6, 0, 0], "shoulderR": [40, 0, 12], "shoulderL": [40, 0, -12]}},
+  {"t": 0.4, "lift": 0, "ease": "out", "pose": {"root": [6, 0, 0], "shoulderR": [150, 0, 25], "shoulderL": [150, 0, -25], "hipR": [55, 0, 0], "hipRPos": [0, 2.2, 0.5], "hipL": [20, 0, 0], "hipLPos": [0, 1, 0]}},
+  {"t": 1, "lift": 0, "ease": "smooth", "pose": {"root": [4, 0, 0], "shoulderR": [140, 0, 30], "shoulderL": [140, 0, -30], "hipR": [40, 0, 0], "hipRPos": [0, 1.6, 0.3], "hipL": [12, 0, 0], "hipLPos": [0, 0.6, 0]}}
+ ]
+}

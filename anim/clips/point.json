@@ -1,0 +1,19 @@
+{
+ "name": "point",
+ "kind": "once",
+ "length": 40,
+ "interp": "ease",
+ "planted": true,
+ "counter": true,
+ "fade": 4,
+ "samples": 0,
+ "emote": true,
+ "mask": [],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"shoulderR": [2, 0, 4], "shoulderL": [2, 0, -4], "hipR": [0, 0, 2], "hipL": [0, 0, -2]}},
+  {"t": 0.2, "lift": 0, "ease": "out", "pose": {"root": [-4, 20, 0], "shoulderR": [90, 5, 0], "shoulderL": [-8, 0, -8]}},
+  {"t": 0.8, "lift": 0, "ease": "smooth", "pose": {"root": [-4, 20, 0], "shoulderR": [88, 5, 0], "shoulderL": [-8, 0, -8]}},
+  {"t": 1, "lift": 0, "ease": "smooth", "pose": {"shoulderR": [2, 0, 4], "shoulderL": [2, 0, -4], "hipR": [0, 0, 2], "hipL": [0, 0, -2]}}
+ ]
+}

@@ -17,7 +17,8 @@ Writes build/anim_preview/<clip>.png. Each sheet has:
   - for cycles: a chart of each foot's height and its position along the
     ground over the cycle (red right foot, blue left foot)
 
-The poses are the clip samples written to the game (tools/anim_clips.py),
+The poses are the clip samples written to the game (anim/clips/*.json
+through tools/anim_clips.py),
 put through the same rig math (tools/rig_fk.py), with the head looking
 straight ahead as the game does (the neck turns back against the torso).
 Colors: yellow head and arms, blue torso, green legs; the right arm and leg
@@ -175,8 +176,8 @@ def frame_times(clip: anim_clips.Clip, frames: int) -> list:
 
 def key_near(clip, t: float, half: float):
     for k in clip.keys:
-        if abs(k.t - t) <= half + 1e-9:
-            return k.t
+        if abs(k["t"] - t) <= half + 1e-9:
+            return k["t"]
     return None
 
 
@@ -230,7 +231,7 @@ def draw_chart(img: ImageDraw.ImageDraw, x0: int, y0: int, w: int, h: int, clip)
         img.line(pts_h, fill=col, width=2)
         img.line(pts_z, fill=col, width=2)
     for k in clip.keys:
-        x = x0 + 8 + k.t * (w - 16)
+        x = x0 + 8 + k["t"] * (w - 16)
         img.line([(x, y0 + 18), (x, y0 + h - 4)], fill=(225, 205, 140), width=1)
     return slip(tr["legR"]), slip(tr["legL"])
 
@@ -244,7 +245,7 @@ def render(clip, frames: int) -> Path:
     im = Image.new("RGB", (W, H), BG)
     g = ImageDraw.Draw(im)
 
-    keys = ", ".join(f"{k.t:g}" for k in sorted(clip.keys, key=lambda k: k.t))
+    keys = ", ".join(f"{k['t']:g}" for k in clip.keys)
     unit = "blocks/cycle" if clip.kind == "cycle" else "ticks"
     flags = [clip.interp]
     if clip.planted:
@@ -287,11 +288,12 @@ def main():
     ap.add_argument("clips", nargs="*", help="clip names (default: all)")
     ap.add_argument("--frames", type=int, default=12, help="frames per sheet (once clips: at most one per tick)")
     args = ap.parse_args()
-    names = args.clips or [c.name for c in anim_clips.CLIPS]
+    clips = anim_clips.by_name()
+    names = args.clips or list(clips)
     for n in names:
-        if n not in anim_clips.BY_NAME:
-            sys.exit(f"unknown clip {n}; clips: {', '.join(anim_clips.BY_NAME)}")
-        print(render(anim_clips.BY_NAME[n], args.frames).relative_to(ROOT))
+        if n not in clips:
+            sys.exit(f"unknown clip {n}; clips: {', '.join(clips)}")
+        print(render(clips[n], args.frames).relative_to(ROOT))
 
 
 if __name__ == "__main__":

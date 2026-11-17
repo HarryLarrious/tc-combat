@@ -1,0 +1,18 @@
+{
+ "name": "land",
+ "kind": "once",
+ "length": 7,
+ "interp": "ease",
+ "planted": true,
+ "counter": true,
+ "fade": 1,
+ "samples": 0,
+ "emote": false,
+ "mask": [],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-16, 0, 0], "shoulderR": [-8, 0, 28], "shoulderL": [-8, 0, -28], "hipR": [24, 0, 6], "hipL": [-18, 0, -6]}},
+  {"t": 0.35, "lift": 0, "ease": "out", "pose": {"root": [-10, 0, 0], "shoulderR": [-4, 0, 18], "shoulderL": [-4, 0, -18], "hipR": [16, 0, 5], "hipL": [-12, 0, -5]}},
+  {"t": 1, "lift": 0, "ease": "smooth", "pose": {"shoulderR": [2, 0, 4], "shoulderL": [2, 0, -4], "hipR": [0, 0, 2], "hipL": [0, 0, -2]}}
+ ]
+}

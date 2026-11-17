@@ -1,0 +1,20 @@
+{
+ "name": "w2",
+ "kind": "once",
+ "length": 11,
+ "interp": "ease",
+ "planted": true,
+ "counter": true,
+ "fade": 2,
+ "samples": 0,
+ "emote": false,
+ "mask": [],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-6, -15, 0], "shoulderR": [40, 0, 12], "shoulderL": [25, 0, -12], "hipR": [-8, 0, 0], "hipL": [10, 0, 0]}},
+  {"t": 0.3, "lift": 0, "ease": "out", "pose": {"root": [-6, 40, 0], "shoulderR": [100, 90, 0], "shoulderRPos": [1, 1, 0], "shoulderL": [30, 0, -40], "hipR": [-12, 0, 0], "hipL": [14, 0, 0]}},
+  {"t": 0.5, "lift": 0, "ease": "in", "pose": {"root": [-14, -45, 0], "rootPos": [0, 0, 2.5], "shoulderR": [95, -110, 0], "shoulderRPos": [-1, 0.5, 2], "shoulderL": [45, 0, -20], "hipR": [-22, 0, 0], "hipL": [26, 0, 0]}},
+  {"t": 0.75, "lift": 0, "ease": "out", "pose": {"root": [-12, -55, 0], "rootPos": [0, 0, 2.5], "shoulderR": [80, -125, 10], "shoulderL": [40, 0, -15], "hipR": [-22, 0, 0], "hipL": [26, 0, 0]}},
+  {"t": 1, "lift": 0, "ease": "smooth", "pose": {"root": [-8, -20, 0], "rootPos": [0, 0, 1.5], "shoulderR": [55, -40, 10], "shoulderL": [25, 0, -20], "hipR": [-8, 0, 0], "hipL": [10, 0, 0]}}
+ ]
+}

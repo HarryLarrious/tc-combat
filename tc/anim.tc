@@ -1,6 +1,6 @@
 // Animation player for the player model. The animations themselves are
-// clips in tools/anim_clips.py (sampled into anim_data.tc); preview them
-// with tools/anim_preview.py. This file only picks which clip plays, finds
+// clips in anim/clips/*.json, made with the editor (tools/anim_editor) and
+// sampled into anim_data.tc by tools/anim_clips.py. This file only picks which clip plays, finds
 // the time in it, and crossfades between clips.
 //
 // Which clip plays:
@@ -71,11 +71,6 @@ function animComboGap(): num {
 /** Ticks of the landing clip (as in anim_clips.py). */
 function animLandTicks(): num {
     return 7;
-}
-
-/** The emote names. */
-function animEmotes(): list {
-    return ["wave", "point", "cheer", "laugh", "dance"];
 }
 
 /** Forgets player `uuid`'s animation state. */
@@ -448,7 +443,8 @@ function animEmoteCommand(words: list) {
         return;
     }
     if (words.len() < 2 || animEmotes().find(words[2] as str) == 0) {
-        default.sendMessage(s"<gray>Usage: <yellow>@e NAME</yellow>. Emotes: wave, point, cheer, laugh, dance.");
+        line names = animEmotes().join(", ");
+        default.sendMessage(s"<gray>Usage: <yellow>@e NAME</yellow>. Emotes: %var(names).");
         return;
     }
     animPlayEmote(line uuid, words[2] as str);

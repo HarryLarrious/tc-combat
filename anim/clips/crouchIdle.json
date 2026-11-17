@@ -1,0 +1,17 @@
+{
+ "name": "crouchIdle",
+ "kind": "loop",
+ "length": 60,
+ "interp": "spline",
+ "planted": true,
+ "counter": true,
+ "fade": 5,
+ "samples": 0,
+ "emote": false,
+ "mask": [],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-22, 0, 0], "shoulderR": [30, 0, 10], "shoulderL": [30, 0, -10], "hipR": [10, 0, 4], "hipL": [-8, 0, -4]}},
+  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [-20, 0, 0], "shoulderR": [33, 0, 12], "shoulderL": [33, 0, -12], "hipR": [10, 0, 4], "hipL": [-8, 0, -4]}}
+ ]
+}

@@ -1,0 +1,17 @@
+{
+ "name": "idle",
+ "kind": "loop",
+ "length": 80,
+ "interp": "spline",
+ "planted": true,
+ "counter": true,
+ "fade": 6,
+ "samples": 0,
+ "emote": false,
+ "mask": [],
+ "notes": "breath out at 0, in at 0.5",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"shoulderR": [2, 0, 4], "shoulderL": [2, 0, -4], "hipR": [0, 0, 2], "hipL": [0, 0, -2]}},
+  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [1.5, 0, 0], "shoulderR": [4, 0, 7], "shoulderL": [4, 0, -7], "hipR": [0, 0, 2], "hipL": [0, 0, -2]}}
+ ]
+}

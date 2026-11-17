@@ -1,0 +1,17 @@
+{
+ "name": "fall",
+ "kind": "loop",
+ "length": 16,
+ "interp": "spline",
+ "planted": false,
+ "counter": true,
+ "fade": 5,
+ "samples": 0,
+ "emote": false,
+ "mask": [],
+ "notes": "",
+ "keys": [
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-4, 0, 0], "shoulderR": [35, 0, 70], "shoulderL": [45, 0, -62], "hipR": [18, 0, 4], "hipL": [-10, 0, -4]}},
+  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [-4, 0, 0], "shoulderR": [45, 0, 62], "shoulderL": [35, 0, -70], "hipR": [-8, 0, 4], "hipL": [16, 0, -4]}}
+ ]
+}
