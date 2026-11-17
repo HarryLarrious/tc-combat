@@ -12,12 +12,19 @@ the top of [tc/rig.tc](tc/rig.tc).
 
 ## Animations
 
-[tc/anim.tc](tc/anim.tc) animates the model in the style of Roblox's legacy
-R6 Animate script: sine swings, with each joint's speed capped per tick
-(Roblox's MaxVelocity). It plays idle, walk, jump and fall, a held-tool arm,
-and a slash (left click with an item) or punch (left click with an empty
-hand). The emotes are wave, point, cheer, laugh and dance; moving stops
-them.
+[tc/anim.tc](tc/anim.tc) animates the model in the style of a Roblox R6
+RPG. Each joint eases toward a target pose every tick.
+
+- **Movement:** breathing idle, bouncy walk, leaning run with pumping arms,
+  crouch, jump (knee tucked), fall (arms out), and a landing squash.
+- **Combat stance:** while you hold an item, the body turns side-on with the
+  weapon arm low and the other arm up to guard.
+- **Combos:** left click attacks, and clicking again during a swing chains
+  the next hit. With an item: horizontal slash, backhand, overhead slam.
+  With an empty hand: right jab, left jab, uppercut.
+- **Facing:** the body faces where you walk. The head looks where you look,
+  within what a neck allows.
+- **Emotes:** wave, point, cheer, laugh and dance. Moving stops them.
 
 | Command | Effect |
 | --- | --- |

@@ -35,7 +35,8 @@
 // frame), for bobbing and crouching. Animations set the pose (rigSetJoint);
 // the rig loop runs the animations (anim.tc) and draws the pose every tick.
 // The model faces where the player walks (rigFace), not where they look:
-// standing still, it keeps its last facing.
+// standing still, it keeps its last facing. The head looks where they look
+// (anim.tc).
 //
 // The real player is hidden while their model is up: from the others with
 // Set Entity Hidden, from themselves (third person) with invisibility. The
@@ -347,8 +348,16 @@ process rigLoop {
                         line grounded = 1;
                     }
                     line holding = animHoldsItem(selected.mainHandItem);
+                    line sneak = 0;
+                    if (selected.isSneaking()) {
+                        line sneak = 1;
+                    }
+                    line sprint = 0;
+                    if (selected.isSprinting()) {
+                        line sprint = 1;
+                    }
                     select reset;
-                    animTick(line uuid as str, vec(line at.x, line at.y, line at.z), line grounded, line holding);
+                    animTick(line uuid as str, vec(line at.x, line at.y, line at.z), line grounded, line holding, line sneak, line sprint, vec(line at.pitch, line at.yaw, 0));
                 }
                 select reset;
             }
