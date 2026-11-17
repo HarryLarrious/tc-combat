@@ -18,7 +18,7 @@ for each clip are in one place. Running it writes `tc/anim_data.tc`, which
 the game plays. [tc/anim.tc](tc/anim.tc) only picks the clip, finds the time
 in it, and crossfades between clips.
 
-- **Movement:** idle (breathing), walk, run, crouch, jump, fall, land, and a
+- **Movement:** idle (breathing), walk (slow movement), run (normal speed and sprinting, as in Roblox), crouch, jump, fall, land, and a
   front flip on a running jump. Walk, run and crouch play over the distance
   walked, so the steps keep pace with the player.
 - **Combat stance:** while you hold an item, standing still.
@@ -47,6 +47,7 @@ each foot slides while it is on the ground. After you edit a clip, run
 | `@e NAME` | Plays an emote: wave, point, cheer, laugh, dance |
 | `@pose JOINT X Y Z` | Sets a joint's angles in degrees (root, neck, shoulderR, shoulderL, hipR, hipL) or an offset in pixels (rootPos, neckPos, shoulderRPos, shoulderLPos, hipRPos, hipLPos), and stops the animations so the pose holds |
 | `@pose reset` | Sets all joints back to rest and starts the animations again |
+| `@animdebug` | Shows the playing clip and the inputs that chose it (speed, sprint, sneak, air, item) in the action bar |
 | `@pack` | Sends the resource pack again |
 
 ## Files

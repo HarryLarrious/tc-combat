@@ -30,9 +30,11 @@ playerevent command {
     } else if (line cmd == "e" || line cmd == "emote") {
         // @e NAME: wave, point, cheer, laugh, dance
         animEmoteCommand(line words);
+    } else if (line cmd == "animdebug") {
+        animDebugToggle();
     } else if (line cmd == "pack") {
         packSend();
     } else {
-        default.sendMessage(s"<gray>Commands: <yellow>@rig</yellow>, <yellow>@slim</yellow>, <yellow>@pose JOINT X Y Z</yellow>, <yellow>@pose reset</yellow>, <yellow>@e NAME</yellow>, <yellow>@pack</yellow>.");
+        default.sendMessage(s"<gray>Commands: <yellow>@rig</yellow>, <yellow>@slim</yellow>, <yellow>@pose JOINT X Y Z</yellow>, <yellow>@pose reset</yellow>, <yellow>@e NAME</yellow>, <yellow>@animdebug</yellow>, <yellow>@pack</yellow>.");
     }
 }

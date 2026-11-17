@@ -39,6 +39,8 @@ declare global animActT: dict[num];
 declare global animNext: dict[num];
 declare global animActEnd: dict[num];
 declare global animStep: dict[num];
+/** Per player UUID: present while @animdebug shows the clip and inputs. */
+declare global animDebug: dict[num];
 /** Per player UUID: the clip playing, the pose the crossfade started from,
  * ticks since it started, and the animated pose (before the head look). */
 declare global animClipNow: dict[str];
@@ -46,14 +48,19 @@ declare global animFrom: dict[dict];
 declare global animFadeT: dict[num];
 declare global animOut: dict[dict];
 
-/** Horizontal speed (blocks per tick): above it the player walks; above the
- * second, runs. */
+/** Horizontal speed (blocks per tick): above the first the player walks;
+ * above the second, runs (normal movement is 0.215, so it runs, as in
+ * Roblox); above the third, or sprinting, a jump is a front flip. */
 function animWalkMin(): num {
     return 0.03;
 }
 
 function animRunMin(): num {
-    return 0.25;
+    return 0.17;
+}
+
+function animFlipMin(): num {
+    return 0.26;
 }
 
 /** Ticks after an attack in which a click still continues the combo. */
@@ -255,7 +262,7 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
         if (line air == 0) {
             line airT = 0;
             line flip = 0;
-            if (line d.y > 0 && (line speed > animRunMin() || sprint == 1)) {
+            if (line d.y > 0 && (line speed > animFlipMin() || sprint == 1)) {
                 line flip = 1;
             }
         }
@@ -397,6 +404,11 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
         }
     }
     global animOut[uuid] = line out;
+    if (global animDebug.hasKeys(uuid)) {
+        select playersByName(uuid);
+        selected.sendActionBar(s"<yellow>%var(clip)</yellow> <gray>u %var(u) · speed %var(speed) · sprint %var(sprint) · sneak %var(sneak) · air %var(air) · item %var(holding)");
+        select reset;
+    }
 
     // The head looks where the player looks, relative to the body (MC yaw
     // grows to the right and pitch downward; the neck's y + is left, x + up).
@@ -413,6 +425,19 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
     line nx = num.clamp(0 - look.x - animWrap(line r.x), -50, 60);
     line pose["neck"] = (line out["neck"] as vec) + vec(line nx, line ny, 0);
     global rigPose[uuid] = line pose;
+}
+
+/** @animdebug: toggles showing the playing clip and the inputs that chose
+ * it in the action bar. */
+function animDebugToggle {
+    line uuid = default.uuid;
+    if (global animDebug.hasKeys(line uuid)) {
+        global animDebug.remove(line uuid);
+        default.sendMessage(s"<gray>Animation debug off.");
+    } else {
+        global animDebug[line uuid] = 1;
+        default.sendMessage(s"<gray>Animation debug on: the action bar shows the clip playing.");
+    }
 }
 
 /** @e NAME: plays an emote on the player's model. */
