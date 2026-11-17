@@ -762,6 +762,7 @@ async function deleteClip() {
   if (!confirm(`Delete the clip ${S.origName}? This removes anim/clips/${S.origName}.json.`)) return;
   if (S.isNew) {
     delete S.clips[S.origName];
+    setStatus("Unsaved clip discarded.");
     return openClip(Object.keys(S.clips).sort()[0], true);
   }
   const r = await fetch(`/api/clips/${encodeURIComponent(S.origName)}`, { method: "DELETE" });
