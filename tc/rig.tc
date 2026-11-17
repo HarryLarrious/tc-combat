@@ -278,9 +278,11 @@ function rigRender(uuid: str) {
     rigLimb(line ids[6], line T, line root, vec(2, -6, 0), line pose["hipL"] as vec, vec(0, 6, 0), 4, 12, 4, line at);
 }
 
-/** Starts the rig loop unless it is already running. */
+/** Starts the rig loop unless it is already running. (rigBeat is 0 before
+ * the first loop: right after the plot starts, the tick count is still
+ * below 5 too.) */
 function rigEnsureLoop {
-    if (game.ticksSinceStartup - global rigBeat > 5) {
+    if (global rigBeat == 0 || game.ticksSinceStartup - global rigBeat > 5) {
         start rigLoop;
     }
 }
