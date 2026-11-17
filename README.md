@@ -50,8 +50,7 @@ with `@e NAME`. Make a new clip with "New", tick Emote, save, and send.
 
 ### What plays when
 
-- **Movement:** idle, walk (slow movement), run (normal speed and
-  sprinting, as in Roblox), crouch, crouchIdle, jump, fall and land. Walk, run and crouch play over the distance walked, so
+- **Movement:** idle, walk (normal movement), run (sprinting), crouch, crouchIdle, jump, fall and land. Walk, run and crouch play over the distance walked, so
   the steps keep pace with the player.
 - **Combat:** stance (standing with an item), hold (the weapon arm while
   walking with an item), and the combos: w1, w2, w3 with an item, and f1,

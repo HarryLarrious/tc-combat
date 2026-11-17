@@ -6,7 +6,7 @@
 // Which clip plays:
 //   in the air     jump (rising), fall
 //   just landed    land
-//   moving         crouch (sneaking), run (sprinting or fast), walk; these
+//   moving         crouch (sneaking), run (sprinting), walk; these
 //                  are cycles driven by the distance walked, so the steps
 //                  match the speed
 //   standing       crouchIdle (sneaking), stance (holding an item), idle
@@ -48,14 +48,14 @@ declare global animFadeT: dict[num];
 declare global animOut: dict[dict];
 
 /** Horizontal speed (blocks per tick): above the first the player walks;
- * above the second, runs (normal movement is 0.215, so it runs, as in
- * Roblox). */
+ * above the second (faster than normal walking, 0.215), or sprinting
+ * (0.28), runs. */
 function animWalkMin(): num {
     return 0.03;
 }
 
 function animRunMin(): num {
-    return 0.17;
+    return 0.25;
 }
 
 /** Ticks after an attack in which a click still continues the combo. */
