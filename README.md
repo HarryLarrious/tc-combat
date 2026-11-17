@@ -12,23 +12,33 @@ the top of [tc/rig.tc](tc/rig.tc).
 
 ## Animations
 
-[tc/anim.tc](tc/anim.tc) animates the model in the stylized, exaggerated
-style of Roblox R6 combat games. Each joint has a position offset as well as
-its angles, so limbs can float free of the body. Each joint eases toward a
-target pose every tick.
+Every animation is a clip of key poses in
+[tools/anim_clips.py](tools/anim_clips.py): the timing, pose values and easing
+for each clip are in one place. Running it writes `tc/anim_data.tc`, which
+the game plays. [tc/anim.tc](tc/anim.tc) only picks the clip, finds the time
+in it, and crossfades between clips.
 
-- **Movement:** deep breathing idle, big bouncy walk, arms-back sprint,
-  crouch, jump with knees tucked (a running jump front-flips), flailing
-  fall, and a deep landing squash.
-- **Combat stance:** while you hold an item, the body turns side-on and
-  bounces on its toes, weapon up and the free arm out to guard.
+- **Movement:** idle (breathing), walk, run, crouch, jump, fall, land, and a
+  front flip on a running jump. Walk, run and crouch play over the distance
+  walked, so the steps keep pace with the player.
+- **Combat stance:** while you hold an item, standing still.
 - **Combos:** left click attacks, and clicking again during a swing chains
-  the next hit. With an item: wide slash, backhand slash, spinning slash.
-  With empty hands: right jab, left jab, jumping uppercut. Fists fly out past
-  arm's length and the body lunges into each hit.
-- **Facing:** the body faces where you walk. The head looks where you look,
-  within what a neck allows.
-- **Emotes:** wave, point, cheer, laugh and dance. Moving stops them.
+  the next hit. With an item: slash, backhand, spinning slash. With empty
+  hands: right jab, left jab, uppercut.
+- **Facing:** the body faces where you walk. The head looks where you look.
+- **Emotes:** wave, point, cheer, laugh and dance (`@e NAME`).
+
+To preview clips without the game:
+
+```bash
+python3 tools/anim_preview.py walk run
+```
+
+This writes `build/anim_preview/<clip>.png`: the clip's frames from the side,
+front and three-quarter views, with key frames marked. For walk, run and
+crouch it also shows a chart of foot height and foot position, and how far
+each foot slides while it is on the ground. After you edit a clip, run
+`python3 tools/anim_clips.py` to update the game data.
 
 | Command | Effect |
 | --- | --- |
@@ -45,4 +55,5 @@ target pose every tick.
 | --- | --- |
 | [tc/](tc/) | Plot code: the rig (`rig.tc`), its animations (`anim.tc`), commands and events (`commands.tc`), the pack (`pack.tc`) |
 | [pack/](pack/) | The resource pack: the skin-part shader and the `combat:body/unit` item model |
+| [tools/anim_clips.py](tools/anim_clips.py), [tools/anim_preview.py](tools/anim_preview.py), [tools/rig_fk.py](tools/rig_fk.py) | The animation clips, the contact-sheet previewer, and the rig math they share |
 | [tools/build_pack.py](tools/build_pack.py) | Validates the pack, compiles its shaders, builds the zip, and publishes it to the `pack-dist` branch (`--publish --push`) |
