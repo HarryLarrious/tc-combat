@@ -33,8 +33,8 @@
 //   z  about its back axis: + tips its top to its left
 // The pose also has rootPos: vec, an offset of the root in skin pixels (rig
 // frame), for bobbing and crouching. Animations set the pose (rigSetJoint);
-// the rig loop draws it every tick, with the head also following the
-// player's look (rigLookPitch).
+// the rig loop runs the animations (anim.tc) and draws the pose every tick,
+// with the head also following the player's look (rigLookPitch).
 //
 // The real player is hidden while their model is up: from the others with
 // Set Entity Hidden, from themselves (third person) with invisibility. The
@@ -48,6 +48,8 @@ declare global rigOf: dict[list];
 declare global rigPose: dict[dict];
 /** Per display UUID: the last matrix sent to it, as text. */
 declare global rigMat: dict[str];
+/** Per player UUID: present while @pose holds the pose (animations off). */
+declare global animHold: dict[num];
 /** Per player UUID: 1 for slim (3 px) arms. */
 declare saved rigSlim: dict[num];
 /** The rig loop's id (a newer loop ends the older one) and its last tick. */
@@ -158,6 +160,8 @@ function rigRemove(uuid: str) {
     }
     global rigOf.remove(uuid);
     global rigPose.remove(uuid);
+    global animHold.remove(uuid);
+    animForget(uuid);
     rigHide(uuid, 0);
     // (Selects nobody when the player has left.)
     select playersByName(uuid);
@@ -312,6 +316,20 @@ process rigLoop {
         }
         global rigBeat = game.ticksSinceStartup;
         for (line uuid, line ids of global rigOf) {
+            if (!global animHold.hasKeys(line uuid as str)) {
+                select playersByName(line uuid as str);
+                if (game.selectionSize > 0) {
+                    line at = selected.location;
+                    line grounded = 0;
+                    if (selected.isGrounded()) {
+                        line grounded = 1;
+                    }
+                    line holding = animHoldsItem(selected.mainHandItem);
+                    select reset;
+                    animTick(line uuid as str, vec(line at.x, line at.y, line at.z), line grounded, line holding);
+                }
+                select reset;
+            }
             rigRender(line uuid as str);
         }
         wait;
@@ -334,7 +352,8 @@ function rigSlimToggle {
 }
 
 /** @pose JOINT X Y Z | @pose reset: sets a joint of the player's own model
- * (testing; see rigRestPose for the joint names). */
+ * and holds the pose (animations stop) until @pose reset (testing; see
+ * rigRestPose for the joint names). */
 function rigPoseCommand(words: list) {
     line uuid = default.uuid;
     if (rigHas(line uuid) == 0) {
@@ -344,7 +363,8 @@ function rigPoseCommand(words: list) {
     if (words.len() >= 2) {
         if (words[2] as str == "reset") {
             rigResetPose(line uuid);
-            default.sendMessage(s"<gray>Pose reset.");
+            global animHold.remove(line uuid);
+            default.sendMessage(s"<gray>Pose reset; animations on.");
             return;
         }
     }
@@ -355,5 +375,6 @@ function rigPoseCommand(words: list) {
     line v = vec(num.parse(words[3] as str), num.parse(words[4] as str), num.parse(words[5] as str));
     line joint = words[2] as str;
     rigSetJoint(line uuid, line joint, line v);
+    global animHold[line uuid] = 1;
     default.sendMessage(s"<gray>%var(joint) = %var(v)");
 }

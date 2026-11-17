@@ -1,0 +1,309 @@
+// Animations for the player model, in the style of Roblox's legacy R6
+// Animate script. Every tick the rig loop calls animTick, which picks a
+// target pose from what the player is doing and moves each joint toward it
+// at a capped speed (Roblox's Motor6D MaxVelocity). That speed cap is what
+// gives R6 its stiff, linear look; the moves themselves are plain sines.
+//
+// Locomotion (legacy Animate: desiredAngle = amplitude * sin(time * freq),
+// the right arm and the left leg swing together):
+//   idle   arms sway 6 degrees, slowly
+//   walk   arms and legs swing 57 degrees (1 rad); the swing speeds up and
+//          slows down with the player's speed
+//   jump / fall   both arms straight up, legs straight, fast (as Roblox's
+//          jump MaxVelocity)
+//   tool   while holding an item, the right arm points forward (toolnone)
+//   slash  left click with an item: the right arm winds up and swings down
+//   punch  left click with an empty hand: a quick jab
+//
+// Emotes (@e NAME, as Roblox's /e): wave, point, cheer, laugh, dance (loops).
+// Moving or jumping stops an emote.
+
+/** Per player UUID: feet position last tick, walk phase (degrees), the
+ * emote playing ("" none) and its tick, the attack playing ("" none) and its
+ * tick. */
+declare global animPrev: dict[vec];
+declare global animPhase: dict[num];
+declare global animEmote: dict[str];
+declare global animEmoteT: dict[num];
+declare global animAct: dict[str];
+declare global animActT: dict[num];
+/** Per player UUID: ticks left counted as in the air. */
+declare global animAir: dict[num];
+
+/** Joint speed caps in degrees per tick (legacy R6 at 20 ticks a second:
+ * 0.1 rad/frame idle and walk, 0.75 jump, 0.5 tool slash). */
+function animRateWalk(): num {
+    return 15;
+}
+
+function animRateJump(): num {
+    return 40;
+}
+
+function animRateAct(): num {
+    return 45;
+}
+
+/** Walking: horizontal speed (blocks per tick) above which the player
+ * walks, and the speed where the swing runs at Roblox's 9 rad/s. */
+function animWalkMin(): num {
+    return 0.03;
+}
+
+function animWalkRef(): num {
+    return 0.215;
+}
+
+/** The emote names. */
+function animEmotes(): list {
+    return ["wave", "point", "cheer", "laugh", "dance"];
+}
+
+/** Forgets player `uuid`'s animation state. */
+function animForget(uuid: str) {
+    global animPrev.remove(uuid);
+    global animPhase.remove(uuid);
+    global animEmote.remove(uuid);
+    global animEmoteT.remove(uuid);
+    global animAct.remove(uuid);
+    global animActT.remove(uuid);
+    global animAir.remove(uuid);
+}
+
+/** Moves `cur` toward `tgt`, each component by at most `step`. */
+function animApproach(cur: vec, tgt: vec, step: num): vec {
+    return vec(cur.x + num.clamp(tgt.x - cur.x, 0 - step, step), cur.y + num.clamp(tgt.y - cur.y, 0 - step, step), cur.z + num.clamp(tgt.z - cur.z, 0 - step, step));
+}
+
+/** 1 when `it` (a hand item) is something, not an empty hand. (Is Holding
+ * Item with no item counts an empty hand too.) */
+function animHoldsItem(it: item): num {
+    line m = it.getMaterial();
+    if (line m == "air" || line m == "") {
+        return 0;
+    }
+    return 1;
+}
+
+/** Starts emote `name` for player `uuid`. */
+function animPlayEmote(uuid: str, name: str) {
+    global animEmote[uuid] = name;
+    global animEmoteT[uuid] = 0;
+}
+
+/** Starts an attack ("slash" or "punch") for player `uuid`. */
+function animPlayAct(uuid: str, name: str) {
+    global animAct[uuid] = name;
+    global animActT[uuid] = 0;
+}
+
+/** Emote `name`'s target pose at tick t (writes into `p`), or 0 when it has
+ * ended. */
+function animEmotePose(name: str, t: num, p: var[dict]): num {
+    if (name == "wave") {
+        // the right arm up and out, waving from the shoulder
+        if (t > 60) {
+            return 0;
+        }
+        p["shoulderR"] = vec(0, 0, 155 + 25 * num.sin(t * 24));
+        p["neck"] = vec(0, 0, -8);
+        return 1;
+    }
+    if (name == "point") {
+        // the right arm straight ahead
+        if (t > 50) {
+            return 0;
+        }
+        p["shoulderR"] = vec(90, 0, 0);
+        p["shoulderL"] = vec(-5, 0, 0);
+        return 1;
+    }
+    if (name == "cheer") {
+        // both arms up, bouncing
+        if (t > 40) {
+            return 0;
+        }
+        line s = num.abs(num.sin(t * 18));
+        p["shoulderR"] = vec(165, 0, 20 + 10 * line s);
+        p["shoulderL"] = vec(165, 0, -20 - 10 * line s);
+        p["rootPos"] = vec(0, 2 * line s, 0);
+        p["neck"] = vec(15, 0, 0);
+        return 1;
+    }
+    if (name == "laugh") {
+        // leaning back, shaking, hands on the belly
+        if (t > 50) {
+            return 0;
+        }
+        line lean = 12 + 6 * num.abs(num.sin(t * 40));
+        p["root"] = vec(line lean, 0, 0);
+        p["hipR"] = vec(0 - line lean, 0, 0);
+        p["hipL"] = vec(0 - line lean, 0, 0);
+        p["neck"] = vec(20, 0, 0);
+        p["shoulderR"] = vec(35, 0, -25);
+        p["shoulderL"] = vec(35, 0, 25);
+        return 1;
+    }
+    if (name == "dance") {
+        // arms pumping out to the sides, the body swaying and bobbing; the
+        // hips turn back against the sway so the feet stay down
+        line s = num.sin(t * 30);
+        p["shoulderR"] = vec(0, 0, 100 + 45 * line s);
+        p["shoulderL"] = vec(0, 0, -100 + 45 * line s);
+        p["root"] = vec(0, 15 * line s, 8 * line s);
+        p["hipR"] = vec(0, -15 * line s, -8 * line s);
+        p["hipL"] = vec(0, -15 * line s, -8 * line s);
+        p["rootPos"] = vec(0, -1 + num.abs(line s), 0);
+        p["neck"] = vec(0, -10 * line s, 0);
+        return 1;
+    }
+    return 0;
+}
+
+/** One tick of player `uuid`'s animation: `feet` is where they stand,
+ * `grounded` 1 on the ground, `holding` 1 with an item in the main hand. */
+function animTick(uuid: str, feet: vec, grounded: num, holding: num) {
+    if (!global rigPose.hasKeys(uuid)) {
+        return;
+    }
+    line prev = feet;
+    if (global animPrev.hasKeys(uuid)) {
+        line prev = global animPrev[uuid];
+    }
+    global animPrev[uuid] = feet;
+    line d = feet - line prev;
+    line speed = vec(line d.x, 0, line d.z).len();
+    // (a teleport is not a step)
+    if (line speed > 2) {
+        line speed = 0;
+    }
+
+    // In the air: not grounded, or rising or falling (Is Grounded alone
+    // misses jumps); held 3 ticks so the arms stay up over the top of a jump.
+    line air = 0;
+    if (global animAir.hasKeys(uuid)) {
+        line air = global animAir[uuid];
+    }
+    if (grounded == 0 || num.abs(line d.y) > 0.02) {
+        line air = 3;
+    } else if (line air > 0) {
+        line air = line air - 1;
+    }
+    global animAir[uuid] = line air;
+
+    line p = rigRestPose();
+    line rate = animRateWalk();
+    line phase = 0;
+    if (global animPhase.hasKeys(uuid)) {
+        line phase = global animPhase[uuid];
+    }
+    line moving = 0;
+    if (line air > 0 && num.abs(line d.y) < 2) {
+        // jump or fall: arms straight up
+        line moving = 1;
+        line rate = animRateJump();
+        line p["shoulderR"] = vec(180, 0, 0);
+        line p["shoulderL"] = vec(180, 0, 0);
+    } else if (line speed > animWalkMin()) {
+        // walk: 9 rad/s (25.8 degrees a tick) at walking speed
+        line moving = 1;
+        line phase = (line phase + 25.8 * num.clamp(line speed / animWalkRef(), 0.7, 1.5)) % 360;
+        line a = 57 * num.sin(line phase);
+        line p["shoulderR"] = vec(line a, 0, 0);
+        line p["shoulderL"] = vec(0 - line a, 0, 0);
+        line p["hipR"] = vec(0 - line a, 0, 0);
+        line p["hipL"] = vec(line a, 0, 0);
+    } else {
+        // idle: a slow sway (1 rad/s)
+        line phase = (line phase + 2.9) % 360;
+        line a = 6 * num.sin(line phase);
+        line p["shoulderR"] = vec(line a, 0, 0);
+        line p["shoulderL"] = vec(0 - line a, 0, 0);
+    }
+    global animPhase[uuid] = line phase;
+
+    // An emote plays only while standing still.
+    if (global animEmote.hasKeys(uuid)) {
+        if (line moving == 1) {
+            global animEmote.remove(uuid);
+        } else {
+            line t = global animEmoteT[uuid];
+            global animEmoteT[uuid] = line t + 1;
+            if (animEmotePose(global animEmote[uuid], line t, line p) == 0) {
+                global animEmote.remove(uuid);
+            }
+        }
+    }
+
+    // Holding an item: the right arm points forward.
+    if (holding == 1) {
+        line p["shoulderR"] = vec(90, 0, 0);
+    }
+
+    // An attack overrides the right arm.
+    if (global animAct.hasKeys(uuid)) {
+        line t = global animActT[uuid];
+        global animActT[uuid] = line t + 1;
+        line act = global animAct[uuid];
+        line rate = num.max(line rate, animRateAct());
+        if (line act == "slash") {
+            // wind up over the head, then swing down past the hip
+            if (line t < 3) {
+                line p["shoulderR"] = vec(160, 0, 10);
+            } else {
+                line p["shoulderR"] = vec(-15, 0, 5);
+                line p["root"] = vec(0, -10, 0);
+                line p["hipR"] = vec(0, 10, 0);
+                line p["hipL"] = vec(0, 10, 0);
+            }
+            if (line t >= 8) {
+                global animAct.remove(uuid);
+            }
+        } else {
+            // punch: a jab straight ahead, the shoulder turned into it
+            line p["shoulderR"] = vec(90, 0, 0);
+            line p["root"] = vec(0, 15, 0);
+            line p["hipR"] = vec(0, -15, 0);
+            line p["hipL"] = vec(0, -15, 0);
+            if (line t >= 4) {
+                global animAct.remove(uuid);
+            }
+        }
+    }
+
+    // Move every joint toward the target; rootPos (pixels) at a tenth.
+    line cur = global rigPose[uuid];
+    for (line k, line v of line p) {
+        line step = line rate;
+        if (line k == "rootPos") {
+            line step = line rate / 10;
+        }
+        line cur[line k] = animApproach(line cur[line k] as vec, line v as vec, line step);
+    }
+    global rigPose[uuid] = line cur;
+}
+
+/** @e NAME: plays an emote on the player's model. */
+function animEmoteCommand(words: list) {
+    line uuid = default.uuid;
+    if (rigHas(line uuid) == 0) {
+        default.sendMessage(s"<red>No model up.</red> <gray>Type <yellow>@rig</yellow> first.");
+        return;
+    }
+    if (words.len() < 2 || animEmotes().find(words[2] as str) == 0) {
+        default.sendMessage(s"<gray>Usage: <yellow>@e NAME</yellow>. Emotes: wave, point, cheer, laugh, dance.");
+        return;
+    }
+    animPlayEmote(line uuid, words[2] as str);
+}
+
+playerevent leftClick {
+    line uuid = default.uuid;
+    if (rigHas(line uuid) == 1) {
+        if (animHoldsItem(default.mainHandItem) == 1) {
+            animPlayAct(line uuid, "slash");
+        } else {
+            animPlayAct(line uuid, "punch");
+        }
+    }
+}

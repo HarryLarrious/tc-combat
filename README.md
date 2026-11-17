@@ -10,18 +10,28 @@ and the pack's core entity shader (from tc-rally_game) draws each head as the
 correct body part. The rig, its joints and the pose format are described at
 the top of [tc/rig.tc](tc/rig.tc).
 
+## Animations
+
+[tc/anim.tc](tc/anim.tc) animates the model in the style of Roblox's legacy
+R6 Animate script: sine swings, with each joint's speed capped per tick
+(Roblox's MaxVelocity). It plays idle, walk, jump and fall, a held-tool arm,
+and a slash (left click with an item) or punch (left click with an empty
+hand). The emotes are wave, point, cheer, laugh and dance; moving stops
+them.
+
 | Command | Effect |
 | --- | --- |
 | `@rig` | Turns your player model on or off (it turns on when you join) |
 | `@slim` | Toggles slim (3 px) arms |
-| `@pose JOINT X Y Z` | Sets a joint's angles in degrees (root, neck, shoulderR, shoulderL, hipR, hipL) or the root offset in pixels (rootPos) |
-| `@pose reset` | Sets all joints back to rest |
+| `@e NAME` | Plays an emote: wave, point, cheer, laugh, dance |
+| `@pose JOINT X Y Z` | Sets a joint's angles in degrees (root, neck, shoulderR, shoulderL, hipR, hipL) or the root offset in pixels (rootPos), and stops the animations so the pose holds |
+| `@pose reset` | Sets all joints back to rest and starts the animations again |
 | `@pack` | Sends the resource pack again |
 
 ## Files
 
 | Path | Contents |
 | --- | --- |
-| [tc/](tc/) | Plot code: the rig (`rig.tc`), commands and events (`commands.tc`), the pack (`pack.tc`) |
+| [tc/](tc/) | Plot code: the rig (`rig.tc`), its animations (`anim.tc`), commands and events (`commands.tc`), the pack (`pack.tc`) |
 | [pack/](pack/) | The resource pack: the skin-part shader and the `combat:body/unit` item model |
 | [tools/build_pack.py](tools/build_pack.py) | Validates the pack, compiles its shaders, builds the zip, and publishes it to the `pack-dist` branch (`--publish --push`) |
