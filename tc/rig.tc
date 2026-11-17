@@ -46,6 +46,8 @@
 declare global rigOf: dict[list];
 /** Per player UUID: the pose (see above). */
 declare global rigPose: dict[dict];
+/** Per display UUID: the last matrix sent to it, as text. */
+declare global rigMat: dict[str];
 /** Per player UUID: 1 for slim (3 px) arms. */
 declare saved rigSlim: dict[num];
 /** The rig loop's id (a newer loop ends the older one) and its last tick. */
@@ -152,6 +154,7 @@ function rigRemove(uuid: str) {
         select entitiesByName(line id as str);
         selectedEntity.remove();
         select reset;
+        global rigMat.remove(line id as str);
     }
     global rigOf.remove(uuid);
     global rigPose.remove(uuid);
@@ -224,8 +227,19 @@ function rigPart(id: str, B: list, sx: num, sy: num, sz: num, c: vec, at: vec) {
     line b = (B[2] as vec) * (sy * line px);
     line d = (B[3] as vec) * (0 - sz * line px);
     line t = c - at;
+    line m = [line a.x, line b.x, line d.x, line t.x, line a.y, line b.y, line d.y, line t.y, line a.z, line b.z, line d.z, line t.z, 0, 0, 0, 1];
+    // Only when it changed: restarting the interpolation on an unchanged
+    // matrix makes the client replay the last change every tick (the part
+    // flickers between its old and new pose).
+    line key = "%var(m)";
+    if (global rigMat.hasKeys(id)) {
+        if (global rigMat[id] == line key) {
+            return;
+        }
+    }
+    global rigMat[id] = line key;
     select entitiesByName(id);
-    selectedEntity.setDisplayTransformationMatrix([line a.x, line b.x, line d.x, line t.x, line a.y, line b.y, line d.y, line t.y, line a.z, line b.z, line d.z, line t.z, 0, 0, 0, 1]);
+    selectedEntity.setDisplayTransformationMatrix(line m);
     selectedEntity.setDisplayInterpolation(1, 0);
     select reset;
 }
