@@ -33,8 +33,9 @@
 //   z  about its back axis: + tips its top to its left
 // The pose also has rootPos: vec, an offset of the root in skin pixels (rig
 // frame), for bobbing and crouching. Animations set the pose (rigSetJoint);
-// the rig loop runs the animations (anim.tc) and draws the pose every tick,
-// with the head also following the player's look (rigLookPitch).
+// the rig loop runs the animations (anim.tc) and draws the pose every tick.
+// The model faces where the player walks (rigFace), not where they look:
+// standing still, it keeps its last facing.
 //
 // The real player is hidden while their model is up: from the others with
 // Set Entity Hidden, from themselves (third person) with invisibility. The
@@ -46,6 +47,8 @@
 declare global rigOf: dict[list];
 /** Per player UUID: the pose (see above). */
 declare global rigPose: dict[dict];
+/** Per player UUID: the way the model faces (world, flat, unit). */
+declare global rigFace: dict[vec];
 /** Per display UUID: the last matrix sent to it, as text. */
 declare global rigMat: dict[str];
 /** Per player UUID: present while @pose holds the pose (animations off). */
@@ -61,10 +64,10 @@ function rigPx(): num {
     return 0.05625;
 }
 
-/** How much of the player's look pitch the head follows (0 to 1); the
- * neck is held between 60 degrees down and 70 up. */
-function rigLookPitch(): num {
-    return 1;
+/** How far the model turns toward where the player walks each tick
+ * (degrees). */
+function rigTurnRate(): num {
+    return 30;
 }
 
 /** The joint names, in the order of the parts they move (head, arms, legs). */
@@ -140,6 +143,9 @@ function rigSpawn {
     }
     global rigOf[line uuid] = line ids;
     global rigPose[line uuid] = rigRestPose();
+    // facing the way the player looks, to start with
+    line yaw = default.location.yaw;
+    global rigFace[line uuid] = vec(0 - num.sin(line yaw), 0, num.cos(line yaw));
     rigHide(line uuid, 1);
     default.givePotionEffect(pot("Invisibility", 1, 1000000), showIcon="False", particles="None");
     rigEnsureLoop();
@@ -160,6 +166,7 @@ function rigRemove(uuid: str) {
     }
     global rigOf.remove(uuid);
     global rigPose.remove(uuid);
+    global rigFace.remove(uuid);
     global animHold.remove(uuid);
     animForget(uuid);
     rigHide(uuid, 0);
@@ -186,6 +193,25 @@ function rigHideAllFrom {
     for (line uuid, line ids of global rigOf) {
         default.setEntityHidden([line uuid], hidden="Enable");
     }
+}
+
+/** Turns player `uuid`'s model toward walking along `d` (world, flat),
+ * by at most rigTurnRate degrees. */
+function rigFaceToward(uuid: str, d: vec) {
+    line t = vec(d.x, 0, d.z).setLength(1);
+    line f = global rigFace[uuid];
+    line cosA = num.clamp(line f.dot(line t), -1, 1);
+    if (line cosA >= num.cos(rigTurnRate())) {
+        global rigFace[uuid] = line t;
+        return;
+    }
+    // turn by the rate toward t: left (+) or right (-) of f
+    line l = vec(0, 1, 0).cross(line f);
+    line a = rigTurnRate();
+    if (line l.dot(line t) < 0) {
+        line a = 0 - line a;
+    }
+    global rigFace[uuid] = (line f * num.cos(line a) + line l * num.sin(line a)).setLength(1);
 }
 
 /** Turns basis [l, u, f] by the angles a (degrees: x about its right, then
@@ -265,8 +291,6 @@ function rigRender(uuid: str) {
         return;
     }
     line feet = selected.location;
-    line yaw = selected.yaw;
-    line pitch = selected.pitch;
     select reset;
     line ids = global rigOf[uuid] as list[str];
     line pose = global rigPose[uuid];
@@ -276,17 +300,15 @@ function rigRender(uuid: str) {
     select reset;
 
     // The root: the torso's center, 18 px above the feet, facing the
-    // player's yaw (MC yaw 0 faces +Z, 90 faces -X).
-    line f0 = vec(0 - num.sin(line yaw), 0, num.cos(line yaw));
+    // way the player last walked (rigFace).
+    line f0 = global rigFace[uuid];
     line u0 = vec(0, 1, 0);
     line R = [line u0.cross(line f0), line u0, line f0];
     line root = line at + rigAt(line R, vec(0, 18, 0) + line pose["rootPos"] as vec);
     line T = rigTurn(line R, line pose["root"] as vec);
     rigPart(line ids[2], line T, 8, 12, 4, line root, line at);
 
-    // The head follows the look (MC pitch + is down; the neck's x + is up).
-    line neck = (line pose["neck"] as vec) + vec(num.clamp(0 - line pitch * rigLookPitch(), -60, 70), 0, 0);
-    rigLimb(line ids[1], line T, line root, vec(0, 6, 0), line neck, vec(0, -4, 0), 8, 8, 8, line at);
+    rigLimb(line ids[1], line T, line root, vec(0, 6, 0), line pose["neck"] as vec, vec(0, -4, 0), 8, 8, 8, line at);
 
     line w = rigArmW(uuid);
     line sx = 4 + line w / 2;

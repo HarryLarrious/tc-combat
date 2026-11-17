@@ -221,6 +221,10 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num) {
         line p["shoulderL"] = vec(0 - line a, 0, 0);
     }
     global animPhase[uuid] = line phase;
+    // The model faces the way the player walks (also in the air).
+    if (line speed > animWalkMin()) {
+        rigFaceToward(uuid, line d);
+    }
 
     // An emote plays only while standing still.
     if (global animEmote.hasKeys(uuid)) {
