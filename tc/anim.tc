@@ -1,43 +1,47 @@
-// Animations for the player model, in the style of a Roblox R6 RPG: soft,
-// eased poses with a bit of bounce, a combat stance with a weapon out, and
-// three-hit combos.
+// Animations for the player model, in the stylized style of Roblox R6
+// combat games: big, exaggerated poses, limbs that float free of the body
+// (each joint has a position offset as well as its angles, see rig.tc),
+// lunges, spins and flips.
 //
 // Every tick the rig loop calls animTick, which builds a target pose from
 // what the player is doing, then eases each joint toward it (a fraction of
-// the way each tick, like an AnimationTrack's fade): snappy for attacks,
-// softer for movement.
+// the way each tick): snappy for attacks, softer for movement.
 //
 // Locomotion (the right arm swings with the left leg):
-//   idle    breathing: the chest rises and falls, arms hang a little out
-//   walk    a bouncy stride, leaning slightly into it
-//   run     (sprinting) a forward lean, long strides, pumping arms; with a
-//           weapon out, the weapon arm trails behind
-//   crouch  (sneaking) low and leaning forward, short steps
-//   jump    rising: one knee tucked, arms up and out
-//   fall    arms thrown out to the sides, flailing
-//   land    a squash for a few ticks on touching down
-// Holding an item puts the body in a combat stance (turned side-on, weapon
-// arm forward and low, the other arm up to guard).
+//   idle    a deep breath in and out, arms floating a little off the body
+//   stance  (holding an item) side-on and bouncing on the toes, weapon up,
+//           the free arm out front to guard
+//   walk    a big bouncy stride, arms sliding forward and back
+//   run     (sprinting) the classic arms-back sprint: leaning hard forward,
+//           both arms trailing behind
+//   crouch  (sneaking) low, leaning in, hands out front
+//   jump    knees tucked up high, arms thrown up; a running jump front-flips
+//   fall    arms and legs flailing wide
+//   land    a deep squash, arms flung out
 //
 // Attacks (left click) chain into a combo when clicked again during the
-// swing: with an item, horizontal slash, backhand slash, overhead slam; with
-// an empty hand, right jab, left jab, uppercut. The combo starts over after
-// a short pause.
+// swing; the combo starts over after a short pause.
+//   with an item:      wide slash, backhand slash, spinning slash
+//   with empty hands:  right jab, left jab, jumping uppercut
+// The fists fly out past arm's length and the body lunges into each hit.
 //
-// The legs turn back against the torso's lean and twist, so the feet stay
-// under the body. The head looks where the player looks (within what a neck
-// allows), on top of the animation.
+// The legs turn back against the torso's lean and twist (not during spins
+// and flips), so the feet stay under the body. The head looks where the
+// player looks, within what a neck allows, on top of the animation.
 //
 // Emotes (@e NAME, as Roblox's /e): wave, point, cheer, laugh, dance (loops).
 // Moving or jumping stops an emote.
 
 /** Per player UUID: feet position last tick, stride phase (degrees), the
  * player's own animation clock (ticks), ticks left counted as in the air,
- * ticks left of the landing squash. */
+ * ticks spent in the air, 1 during a front flip, ticks left of the landing
+ * squash. */
 declare global animPrev: dict[vec];
 declare global animPhase: dict[num];
 declare global animClock: dict[num];
 declare global animAir: dict[num];
+declare global animAirT: dict[num];
+declare global animFlip: dict[num];
 declare global animLand: dict[num];
 /** Per player UUID: the emote playing and its tick. */
 declare global animEmote: dict[str];
@@ -55,15 +59,15 @@ declare global animStep: dict[num];
 /** Easing per tick (fraction of the way to the target): movement, air,
  * attacks. */
 function animEaseMove(): num {
-    return 0.3;
-}
-
-function animEaseAir(): num {
     return 0.35;
 }
 
+function animEaseAir(): num {
+    return 0.45;
+}
+
 function animEaseAct(): num {
-    return 0.6;
+    return 0.65;
 }
 
 /** Horizontal speed (blocks per tick): above it the player walks; above the
@@ -98,6 +102,8 @@ function animForget(uuid: str) {
     global animPhase.remove(uuid);
     global animClock.remove(uuid);
     global animAir.remove(uuid);
+    global animAirT.remove(uuid);
+    global animFlip.remove(uuid);
     global animLand.remove(uuid);
     global animEmote.remove(uuid);
     global animEmoteT.remove(uuid);
@@ -119,6 +125,25 @@ function animGet(d: dict, uuid: str, def: num): num {
 /** `cur` moved fraction k of the way to `tgt`. */
 function animEase(cur: vec, tgt: vec, k: num): vec {
     return cur + (tgt - cur) * k;
+}
+
+/** `cur` shifted by whole turns to within half a turn of `tgt` on x and y
+ * (so a spin or flip that ended at 360 does not unwind). */
+function animUnwrap(cur: vec, tgt: vec): vec {
+    line out = cur;
+    while (line out.x - tgt.x > 180) {
+        line out = line out - vec(360, 0, 0);
+    }
+    while (tgt.x - line out.x > 180) {
+        line out = line out + vec(360, 0, 0);
+    }
+    while (line out.y - tgt.y > 180) {
+        line out = line out - vec(0, 360, 0);
+    }
+    while (tgt.y - line out.y > 180) {
+        line out = line out + vec(0, 360, 0);
+    }
+    return line out;
 }
 
 /** 1 when `it` (a hand item) is something, not an empty hand. (Is Holding
@@ -173,10 +198,10 @@ function animStartHit(uuid: str, name: str) {
 /** How many ticks attack `name` lasts. */
 function animHitTicks(name: str): num {
     if (name == "w3") {
-        return 14;
+        return 16;
     }
     if (name == "f3") {
-        return 12;
+        return 13;
     }
     if (name == "f1" || name == "f2") {
         return 8;
@@ -184,141 +209,199 @@ function animHitTicks(name: str): num {
     return 10;
 }
 
-/** Attack `name`'s pose at tick t, written into `p`. Wind-up first, then
- * the strike. */
+/** Attack `name`'s pose at tick t, written into `p`: a wind-up, then the
+ * strike. */
 function animHitPose(name: str, t: num, p: var[dict]) {
     if (name == "w1") {
-        // horizontal slash, right to left
+        // wide slash, right to left: pulled far back, then swept across
+        // with the arm flung out and the body lunging after it
         if (t < 3) {
-            p["shoulderR"] = vec(95, -75, 0);
-            p["root"] = vec(-4, -30, 0);
+            p["shoulderR"] = vec(100, -100, 0);
+            p["shoulderRPos"] = vec(-2, 1, -2);
+            p["root"] = vec(-6, -50, 0);
+            p["rootPos"] = vec(0, -1.5, -1);
+            p["shoulderL"] = vec(60, 0, -20);
+            p["shoulderLPos"] = vec(0, 0, 2);
         } else {
-            p["shoulderR"] = vec(95, 70, 0);
-            p["root"] = vec(-8, 35, 0);
-            p["rootPos"] = vec(0, -1, 0);
+            p["shoulderR"] = vec(100, 115, 0);
+            p["shoulderRPos"] = vec(0, 1, 4);
+            p["root"] = vec(-14, 55, 6);
+            p["rootPos"] = vec(0, -2, 4);
+            p["shoulderL"] = vec(30, 0, -80);
+            p["shoulderLPos"] = vec(2, 1, -2);
         }
-        p["shoulderL"] = vec(30, 0, -35);
         return;
     }
     if (name == "w2") {
-        // backhand slash, left to right
+        // backhand slash, left to right, the mirror of w1
         if (t < 3) {
-            p["shoulderR"] = vec(95, 75, 0);
-            p["root"] = vec(-4, 35, 0);
+            p["shoulderR"] = vec(100, 100, 0);
+            p["shoulderRPos"] = vec(2, 1, 1);
+            p["root"] = vec(-6, 50, 0);
+            p["rootPos"] = vec(0, -1.5, -1);
+            p["shoulderL"] = vec(40, 0, -60);
+            p["shoulderLPos"] = vec(2, 0, -1);
         } else {
-            p["shoulderR"] = vec(90, -80, 0);
-            p["root"] = vec(-8, -35, 0);
-            p["rootPos"] = vec(0, -1, 0);
+            p["shoulderR"] = vec(95, -115, 0);
+            p["shoulderRPos"] = vec(-3, 1, 3);
+            p["root"] = vec(-14, -55, -6);
+            p["rootPos"] = vec(0, -2, 4);
+            p["shoulderL"] = vec(60, 0, -30);
+            p["shoulderLPos"] = vec(1, 1, 2);
         }
-        p["shoulderL"] = vec(20, 0, -40);
         return;
     }
     if (name == "w3") {
-        // overhead slam with both hands, a step into it
-        if (t < 5) {
-            p["shoulderR"] = vec(175, 0, 10);
-            p["shoulderL"] = vec(165, 0, -10);
-            p["root"] = vec(12, 0, 0);
-            p["rootPos"] = vec(0, 0.5, 0);
+        // spinning slash: crouch, hop into a full turn with both arms flung
+        // out, land low and slam the blade down
+        if (t < 3) {
+            p["shoulderR"] = vec(60, -60, 40);
+            p["shoulderL"] = vec(60, 60, -40);
+            p["root"] = vec(-15, -40, 0);
+            p["rootPos"] = vec(0, -3, 0);
+        } else if (t < 11) {
+            p["shoulderR"] = vec(0, 0, 95);
+            p["shoulderRPos"] = vec(-3, 1, 0);
+            p["shoulderL"] = vec(0, 0, -95);
+            p["shoulderLPos"] = vec(3, 1, 0);
+            p["root"] = vec(-5, -40 + 400 * (t - 3) / 8, 0);
+            p["rootPos"] = vec(0, 3, 0);
+            p["hipR"] = vec(40, 0, 10);
+            p["hipL"] = vec(20, 0, -10);
         } else {
-            p["shoulderR"] = vec(-5, 0, 5);
-            p["shoulderL"] = vec(10, 0, -10);
-            p["root"] = vec(-28, 0, 0);
-            p["rootPos"] = vec(0, -2.5, 0);
-            p["hipR"] = vec(-15, 0, 0);
-            p["hipL"] = vec(25, 0, 0);
+            p["shoulderR"] = vec(-10, 0, 10);
+            p["shoulderRPos"] = vec(0, 0, 3);
+            p["shoulderL"] = vec(-40, 0, -50);
+            p["root"] = vec(-30, 360, 0);
+            p["rootPos"] = vec(0, -4, 3);
+            p["hipR"] = vec(-30, 0, 0);
+            p["hipL"] = vec(40, 0, 0);
         }
         return;
     }
     if (name == "f1") {
-        // right jab, the right shoulder turned into it
+        // right jab: the fist shoots out past arm's length
         if (t < 2) {
-            p["shoulderR"] = vec(40, 0, 10);
-            p["root"] = vec(-4, -15, 0);
+            p["shoulderR"] = vec(70, 0, 10);
+            p["shoulderRPos"] = vec(0, 0, -2);
+            p["root"] = vec(-5, -30, 0);
         } else {
-            p["shoulderR"] = vec(95, 15, 0);
-            p["root"] = vec(-8, 30, 0);
+            p["shoulderR"] = vec(95, 20, 0);
+            p["shoulderRPos"] = vec(1, 0, 6);
+            p["root"] = vec(-12, 45, 0);
+            p["rootPos"] = vec(0, -1, 2.5);
         }
-        p["shoulderL"] = vec(60, 0, -25);
+        p["shoulderL"] = vec(80, -10, -20);
+        p["shoulderLPos"] = vec(0, 0, 1.5);
         return;
     }
     if (name == "f2") {
-        // left jab
+        // left jab, the mirror of f1
         if (t < 2) {
-            p["shoulderL"] = vec(40, 0, -10);
-            p["root"] = vec(-4, 15, 0);
+            p["shoulderL"] = vec(70, 0, -10);
+            p["shoulderLPos"] = vec(0, 0, -2);
+            p["root"] = vec(-5, 30, 0);
         } else {
-            p["shoulderL"] = vec(95, -15, 0);
-            p["root"] = vec(-8, -30, 0);
+            p["shoulderL"] = vec(95, -20, 0);
+            p["shoulderLPos"] = vec(-1, 0, 6);
+            p["root"] = vec(-12, -45, 0);
+            p["rootPos"] = vec(0, -1, 2.5);
         }
-        p["shoulderR"] = vec(60, 0, 25);
+        p["shoulderR"] = vec(80, 10, 20);
+        p["shoulderRPos"] = vec(0, 0, 1.5);
         return;
     }
-    // f3: uppercut, dipping low and rising into it
+    // f3: jumping uppercut: dip low, then launch up with the fist flying
+    // over the head
     if (t < 4) {
-        p["shoulderR"] = vec(-25, 0, 15);
-        p["root"] = vec(-15, -20, 0);
-        p["rootPos"] = vec(0, -2.5, 0);
+        p["shoulderR"] = vec(-35, 0, 25);
+        p["shoulderRPos"] = vec(0, -1, -1);
+        p["root"] = vec(-25, -35, 0);
+        p["rootPos"] = vec(0, -4, 0);
+        p["shoulderL"] = vec(70, 0, -20);
     } else {
-        p["shoulderR"] = vec(165, 10, 0);
-        p["root"] = vec(10, 20, 0);
-        p["rootPos"] = vec(0, 1, 0);
+        p["shoulderR"] = vec(178, 15, 0);
+        p["shoulderRPos"] = vec(0, 5, 2);
+        p["root"] = vec(15, 30, 0);
+        p["rootPos"] = vec(0, 5, 1.5);
+        p["shoulderL"] = vec(-50, 0, -50);
+        p["shoulderLPos"] = vec(1.5, 0, -1);
+        p["hipR"] = vec(-40, 0, 0);
+        p["hipL"] = vec(60, 0, 0);
+        p["hipLPos"] = vec(0, 1.5, 0);
     }
-    p["shoulderL"] = vec(50, 0, -25);
 }
 
 /** Emote `name`'s target pose at tick t (writes into `p`), or 0 when it has
  * ended. */
 function animEmotePose(name: str, t: num, p: var[dict]): num {
     if (name == "wave") {
-        // the right arm up and out, waving from the shoulder
+        // the right arm high and out, waving big
         if (t > 60) {
             return 0;
         }
-        p["shoulderR"] = vec(0, 0, 155 + 25 * num.sin(t * 24));
-        p["neck"] = vec(0, 0, -8);
+        p["shoulderR"] = vec(0, 0, 150 + 35 * num.sin(t * 24));
+        p["shoulderRPos"] = vec(-1, 2, 0);
+        p["root"] = vec(0, 0, -6);
+        p["neck"] = vec(0, 0, -12);
         return 1;
     }
     if (name == "point") {
-        // the right arm straight ahead
+        // the right arm thrust straight ahead
         if (t > 50) {
             return 0;
         }
-        p["shoulderR"] = vec(90, 0, 0);
-        p["shoulderL"] = vec(-5, 0, 0);
+        p["shoulderR"] = vec(92, 0, 0);
+        p["shoulderRPos"] = vec(0, 0, 3);
+        p["root"] = vec(-8, 25, 0);
+        p["shoulderL"] = vec(-25, 0, -15);
         return 1;
     }
     if (name == "cheer") {
-        // both arms up, bouncing
+        // jumping on the spot, both arms punching the air
         if (t > 40) {
             return 0;
         }
         line s = num.abs(num.sin(t * 18));
-        p["shoulderR"] = vec(165, 0, 20 + 10 * line s);
-        p["shoulderL"] = vec(165, 0, -20 - 10 * line s);
-        p["rootPos"] = vec(0, 2 * line s, 0);
-        p["neck"] = vec(15, 0, 0);
+        p["shoulderR"] = vec(170, 0, 25 + 15 * line s);
+        p["shoulderRPos"] = vec(-1, 2 * line s, 0);
+        p["shoulderL"] = vec(170, 0, -25 - 15 * line s);
+        p["shoulderLPos"] = vec(1, 2 * line s, 0);
+        p["rootPos"] = vec(0, 4 * line s, 0);
+        p["hipR"] = vec(25 * line s, 0, 10);
+        p["hipL"] = vec(25 * line s, 0, -10);
+        p["neck"] = vec(20, 0, 0);
         return 1;
     }
     if (name == "laugh") {
-        // leaning back, shaking, hands on the belly
+        // doubled over backward, shaking
         if (t > 50) {
             return 0;
         }
-        p["root"] = vec(12 + 6 * num.abs(num.sin(t * 40)), 0, 0);
-        p["neck"] = vec(20, 0, 0);
-        p["shoulderR"] = vec(35, 0, -25);
-        p["shoulderL"] = vec(35, 0, 25);
+        line sh = num.abs(num.sin(t * 40));
+        p["root"] = vec(22 + 10 * line sh, 0, 0);
+        p["rootPos"] = vec(0, -1 + line sh, 0);
+        p["neck"] = vec(25, 0, 0);
+        p["shoulderR"] = vec(40, 0, -30);
+        p["shoulderRPos"] = vec(0, -1, 1);
+        p["shoulderL"] = vec(40, 0, 30);
+        p["shoulderLPos"] = vec(0, -1, 1);
         return 1;
     }
     if (name == "dance") {
-        // arms pumping out to the sides, the body swaying and bobbing
+        // arms pumping up and out, floating off the shoulders, the body
+        // swaying and bouncing low
         line s = num.sin(t * 30);
-        p["shoulderR"] = vec(0, 0, 100 + 45 * line s);
-        p["shoulderL"] = vec(0, 0, -100 + 45 * line s);
-        p["root"] = vec(0, 15 * line s, 8 * line s);
-        p["rootPos"] = vec(0, -1 + num.abs(line s), 0);
-        p["neck"] = vec(0, -10 * line s, 0);
+        line bb = num.abs(line s);
+        p["shoulderR"] = vec(20, 0, 110 + 50 * line s);
+        p["shoulderRPos"] = vec(-2, 1 + 1.5 * line s, 0);
+        p["shoulderL"] = vec(20, 0, -110 + 50 * line s);
+        p["shoulderLPos"] = vec(2, 1 - 1.5 * line s, 0);
+        p["root"] = vec(-5, 25 * line s, 12 * line s);
+        p["rootPos"] = vec(2 * line s, -2 + 2 * line bb, 0);
+        p["hipR"] = vec(20 * line bb, 0, 10);
+        p["hipL"] = vec(20 * line bb, 0, -10);
+        p["neck"] = vec(0, -15 * line s, 0);
         return 1;
     }
     return 0;
@@ -348,18 +431,31 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
 
     // In the air: not grounded, or rising or falling (Is Grounded alone
     // misses jumps); held 3 ticks so the pose holds over the top of a jump.
-    // Touching down after a real fall starts the landing squash.
+    // Taking off at a run front-flips; touching down starts the squash.
     line air = animGet(global animAir, uuid, 0);
+    line airT = animGet(global animAirT, uuid, 0);
+    line flip = animGet(global animFlip, uuid, 0);
     line land = num.max(animGet(global animLand, uuid, 0) - 1, 0);
     if (grounded == 0 || num.abs(line d.y) > 0.02) {
+        if (line air == 0) {
+            line airT = 0;
+            line flip = 0;
+            if (line d.y > 0 && (line speed > animRunMin() || sprint == 1)) {
+                line flip = 1;
+            }
+        }
         line air = 3;
+        line airT = line airT + 1;
     } else if (line air > 0) {
         line air = line air - 1;
         if (line air == 0) {
             line land = 6;
+            line flip = 0;
         }
     }
     global animAir[uuid] = line air;
+    global animAirT[uuid] = line airT;
+    global animFlip[uuid] = line flip;
     global animLand[uuid] = line land;
 
     line phase = (animGet(global animPhase, uuid, 0) + line speed * animStride()) % 360;
@@ -371,85 +467,116 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
     line p = rigRestPose();
     line k = animEaseMove();
     line moving = 1;
+    // 1 when the legs should not turn back against the torso (spins, flips)
+    line free = 0;
     if (line air > 0) {
         line k = animEaseAir();
-        if (line d.y > 0) {
-            // rising: one knee tucked, arms up and out
-            line p["shoulderR"] = vec(40, 0, 45);
-            line p["shoulderL"] = vec(40, 0, -45);
-            line p["hipR"] = vec(50, 0, 0);
-            line p["hipL"] = vec(-5, 0, 0);
-            line p["root"] = vec(4, 0, 0);
+        if (line flip == 1) {
+            // running jump: a front flip, tucked tight
+            line free = 1;
+            line p["root"] = vec(0 - num.min(line airT * 36, 360), 0, 0);
+            line p["hipR"] = vec(95, 0, 5);
+            line p["hipRPos"] = vec(0, 2.5, 1);
+            line p["hipL"] = vec(95, 0, -5);
+            line p["hipLPos"] = vec(0, 2.5, 1);
+            line p["shoulderR"] = vec(70, 0, 15);
+            line p["shoulderRPos"] = vec(0, -1, 2);
+            line p["shoulderL"] = vec(70, 0, -15);
+            line p["shoulderLPos"] = vec(0, -1, 2);
+        } else if (line d.y > 0) {
+            // rising: knees tucked high, arms thrown up
+            line p["shoulderR"] = vec(155, 0, 40);
+            line p["shoulderRPos"] = vec(-1, 2, 0);
+            line p["shoulderL"] = vec(155, 0, -40);
+            line p["shoulderLPos"] = vec(1, 2, 0);
+            line p["hipR"] = vec(85, 0, 8);
+            line p["hipRPos"] = vec(0, 2, 0);
+            line p["hipL"] = vec(60, 0, -8);
+            line p["hipLPos"] = vec(0, 1.5, 0);
+            line p["root"] = vec(8, 0, 0);
         } else {
-            // falling: arms thrown out, flailing a little
-            line f = 8 * num.sin(line clock * 40);
-            line p["shoulderR"] = vec(20, 0, 75 + line f);
-            line p["shoulderL"] = vec(20, 0, -75 + line f);
-            line p["hipR"] = vec(15, 0, 4);
-            line p["hipL"] = vec(-12, 0, -4);
-            line p["root"] = vec(-6, 0, 0);
+            // falling: arms and legs flailing wide
+            line w = num.sin(line clock * 45);
+            line p["shoulderR"] = vec(30 + 25 * line w, 0, 105);
+            line p["shoulderRPos"] = vec(-1.5, 1, 0);
+            line p["shoulderL"] = vec(30 - 25 * line w, 0, -105);
+            line p["shoulderLPos"] = vec(1.5, 1, 0);
+            line p["hipR"] = vec(25 + 20 * line w, 0, 15);
+            line p["hipL"] = vec(-15 - 20 * line w, 0, -15);
+            line p["root"] = vec(-10, 0, 0);
         }
-        if (holding == 1) {
-            line p["shoulderR"] = vec(60, 0, 25);
+        if (holding == 1 && line flip == 0) {
+            line p["shoulderR"] = vec(120, 0, 30);
+            line p["shoulderRPos"] = vec(-1, 1.5, 1);
         }
     } else if (line speed > animWalkMin() && sneak == 1) {
-        // crouch walk: low, leaning forward, short steps
-        line p["root"] = vec(-18, 3 * line s, 0);
-        line p["rootPos"] = vec(0, -2.5 + 0.4 * line bob, 0);
-        line p["hipR"] = vec(-28 * line s, 0, 0);
-        line p["hipL"] = vec(28 * line s, 0, 0);
-        line p["shoulderR"] = vec(25 + 20 * line s, 0, 10);
-        line p["shoulderL"] = vec(25 - 20 * line s, 0, -10);
+        // crouch walk: low, leaning in, hands out front
+        line p["root"] = vec(-25, 4 * line s, 0);
+        line p["rootPos"] = vec(0, -3.5 + 0.6 * line bob, 0);
+        line p["hipR"] = vec(-35 * line s, 0, 0);
+        line p["hipL"] = vec(35 * line s, 0, 0);
+        line p["shoulderR"] = vec(45 + 25 * line s, 0, 15);
+        line p["shoulderRPos"] = vec(-1, 0, 1.5);
+        line p["shoulderL"] = vec(45 - 25 * line s, 0, -15);
+        line p["shoulderLPos"] = vec(1, 0, 1.5);
     } else if (line speed > animRunMin() || (sprint == 1 && line speed > animWalkMin())) {
-        // run: lean in, long strides, pumping arms
-        line p["root"] = vec(-14, 6 * line s, 0);
-        line p["rootPos"] = vec(0, -0.8 + 1.4 * line bob, 0);
-        line p["hipR"] = vec(-60 * line s, 0, 0);
-        line p["hipL"] = vec(60 * line s, 0, 0);
-        line p["shoulderR"] = vec(10 + 55 * line s, 0, 10);
-        line p["shoulderL"] = vec(10 - 55 * line s, 0, -10);
-        if (holding == 1) {
-            // the weapon trails behind
-            line p["shoulderR"] = vec(-40, 0, 25);
-        }
+        // run: leaning hard in, long strides, both arms trailing behind
+        line p["root"] = vec(-30, 8 * line s, 0);
+        line p["rootPos"] = vec(0, -1.2 + 2.2 * line bob, 0);
+        line p["hipR"] = vec(-75 * line s, 0, 0);
+        line p["hipL"] = vec(75 * line s, 0, 0);
+        line p["shoulderR"] = vec(-80 + 12 * line s, 0, 20);
+        line p["shoulderRPos"] = vec(-0.5, 0.5, -2.5);
+        line p["shoulderL"] = vec(-80 - 12 * line s, 0, -20);
+        line p["shoulderLPos"] = vec(0.5, 0.5, -2.5);
     } else if (line speed > animWalkMin()) {
-        // walk: a bouncy stride
-        line p["root"] = vec(-4, 4 * line s, 2 * line s);
-        line p["rootPos"] = vec(0, -0.3 + 0.7 * line bob, 0);
-        line p["hipR"] = vec(-38 * line s, 0, 0);
-        line p["hipL"] = vec(38 * line s, 0, 0);
-        line p["shoulderR"] = vec(30 * line s, 0, 5);
-        line p["shoulderL"] = vec(-30 * line s, 0, -5);
+        // walk: a big bouncy stride, arms sliding with the swing
+        line p["root"] = vec(-6, 12 * line s, 4 * line s);
+        line p["rootPos"] = vec(0, -0.6 + 1.6 * line bob, 0);
+        line p["hipR"] = vec(-50 * line s, 0, 0);
+        line p["hipL"] = vec(50 * line s, 0, 0);
+        line p["shoulderR"] = vec(50 * line s, 0, 10);
+        line p["shoulderRPos"] = vec(-0.5, 0, 1.5 * line s);
+        line p["shoulderL"] = vec(-50 * line s, 0, -10);
+        line p["shoulderLPos"] = vec(0.5, 0, -1.5 * line s);
         if (holding == 1) {
-            line p["shoulderR"] = vec(35 + 8 * line s, 0, 15);
+            line p["shoulderR"] = vec(70 + 10 * line s, 15, 25);
+            line p["shoulderRPos"] = vec(-1, 0.5, 1);
         }
     } else {
         line moving = 0;
         if (sneak == 1) {
             // crouching still
-            line p["root"] = vec(-18, 0, 0);
-            line p["rootPos"] = vec(0, -2.5 + 0.2 * line b, 0);
-            line p["shoulderR"] = vec(25, 0, 10);
-            line p["shoulderL"] = vec(25, 0, -10);
-            line p["hipR"] = vec(-5, 0, 4);
-            line p["hipL"] = vec(10, 0, -4);
+            line p["root"] = vec(-25, 0, 0);
+            line p["rootPos"] = vec(0, -3.5 + 0.3 * line b, 0);
+            line p["shoulderR"] = vec(45, 0, 15);
+            line p["shoulderRPos"] = vec(-1, 0, 1.5);
+            line p["shoulderL"] = vec(45, 0, -15);
+            line p["shoulderLPos"] = vec(1, 0, 1.5);
+            line p["hipR"] = vec(-10, 0, 8);
+            line p["hipL"] = vec(15, 0, -8);
         } else if (holding == 1) {
-            // combat stance: side-on, weapon arm forward and low, the other
-            // arm up to guard, feet apart
-            line p["root"] = vec(-4, -15, 0);
-            line p["rootPos"] = vec(0, -0.8 + 0.25 * line b, 0);
-            line p["shoulderR"] = vec(35 + 3 * line b, 0, 15);
-            line p["shoulderL"] = vec(25 + 3 * line b, 0, -20);
-            line p["hipR"] = vec(-8, 0, 6);
-            line p["hipL"] = vec(12, 0, -4);
+            // combat stance: side-on, bouncing on the toes, weapon up, the
+            // free arm out front to guard, feet wide
+            line bb = num.abs(num.sin(line clock * 14));
+            line p["root"] = vec(-10, -30, 0);
+            line p["rootPos"] = vec(0, -1.5 + bb, 0);
+            line p["shoulderR"] = vec(75 + 6 * line b, 20, 30);
+            line p["shoulderRPos"] = vec(-1, 0.5, 1.5);
+            line p["shoulderL"] = vec(80 + 6 * line b, -25, -15);
+            line p["shoulderLPos"] = vec(1, 0.5, 2.5);
+            line p["hipR"] = vec(-15, 0, 10);
+            line p["hipL"] = vec(22, 0, -8);
         } else {
-            // idle: breathing, arms hanging a little out
-            line p["root"] = vec(-1 + line b, 0, 0);
-            line p["rootPos"] = vec(0, -0.25 + 0.25 * line b, 0);
-            line p["shoulderR"] = vec(4 + 3 * line b, 0, 6 + 2 * line b);
-            line p["shoulderL"] = vec(4 + 3 * line b, 0, -6 - 2 * line b);
-            line p["hipR"] = vec(0, 0, 3);
-            line p["hipL"] = vec(0, 0, -3);
+            // idle: a deep breath in and out, arms floating off the body
+            line p["root"] = vec(-2 + 3 * line b, 0, 0);
+            line p["rootPos"] = vec(0, -0.6 + 0.6 * line b, 0);
+            line p["shoulderR"] = vec(8 + 6 * line b, 0, 12 + 5 * line b);
+            line p["shoulderRPos"] = vec(-0.6 - 0.4 * line b, 0.3 * line b, 0);
+            line p["shoulderL"] = vec(8 + 6 * line b, 0, -12 - 5 * line b);
+            line p["shoulderLPos"] = vec(0.6 + 0.4 * line b, 0.3 * line b, 0);
+            line p["hipR"] = vec(0, 0, 4);
+            line p["hipL"] = vec(0, 0, -4);
         }
     }
     // The model faces the way the player walks (also in the air).
@@ -457,13 +584,17 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
         rigFaceToward(uuid, line d);
     }
 
-    // Landing: a squash, easing out.
+    // Landing: a deep squash, arms flung out, easing off.
     if (line land > 0 && line air == 0) {
         line q = line land / 6;
-        line p["rootPos"] = (line p["rootPos"] as vec) + vec(0, -2.5 * line q, 0);
-        line p["root"] = (line p["root"] as vec) + vec(-10 * line q, 0, 0);
-        line p["shoulderR"] = (line p["shoulderR"] as vec) + vec(0, 0, 20 * line q);
-        line p["shoulderL"] = (line p["shoulderL"] as vec) + vec(0, 0, -20 * line q);
+        line p["rootPos"] = (line p["rootPos"] as vec) + vec(0, -4.5 * line q, 0);
+        line p["root"] = (line p["root"] as vec) + vec(-22 * line q, 0, 0);
+        line p["shoulderR"] = (line p["shoulderR"] as vec) + vec(0, 0, 55 * line q);
+        line p["shoulderRPos"] = (line p["shoulderRPos"] as vec) + vec(-1.5 * line q, 0, 0);
+        line p["shoulderL"] = (line p["shoulderL"] as vec) + vec(0, 0, -55 * line q);
+        line p["shoulderLPos"] = (line p["shoulderLPos"] as vec) + vec(1.5 * line q, 0, 0);
+        line p["hipR"] = (line p["hipR"] as vec) + vec(0, 0, 18 * line q);
+        line p["hipL"] = (line p["hipL"] as vec) + vec(0, 0, -18 * line q);
     }
 
     // An emote plays only while standing still.
@@ -487,6 +618,9 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
         global animActT[uuid] = line t + 1;
         line k = animEaseAct();
         animHitPose(line act, line t, line p);
+        if (line act == "w3" && line t >= 3) {
+            line free = 1;
+        }
         if (line t + 1 >= animHitTicks(line act)) {
             line step = num.parse(line act.replace("w", "").replace("f", ""));
             global animAct.remove(uuid);
@@ -505,11 +639,14 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
 
     // The legs turn back against the torso's lean and twist.
     line r = line p["root"] as vec;
-    line p["hipR"] = (line p["hipR"] as vec) - line r;
-    line p["hipL"] = (line p["hipL"] as vec) - line r;
+    if (line free == 0) {
+        line p["hipR"] = (line p["hipR"] as vec) - line r;
+        line p["hipL"] = (line p["hipL"] as vec) - line r;
+    }
 
     // The head looks where the player looks, relative to the body (MC yaw
     // grows to the right and pitch downward; the neck's y + is left, x + up).
+    // Not while the body spins or flips.
     line f = global rigFace[uuid];
     line rel = look.y - num.atan2(0 - line f.x, line f.z);
     if (line rel > 180) {
@@ -518,12 +655,16 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
     if (line rel < -180) {
         line rel = line rel + 360;
     }
-    line ny = num.clamp(0 - line rel - line r.y, -70, 70);
-    line nx = num.clamp(0 - look.x - line r.x, -50, 60);
-    line p["neck"] = (line p["neck"] as vec) + vec(line nx, line ny, 0);
+    if (line free == 0) {
+        line ny = num.clamp(0 - line rel - line r.y, -70, 70);
+        line nx = num.clamp(0 - look.x - line r.x, -50, 60);
+        line p["neck"] = (line p["neck"] as vec) + vec(line nx, line ny, 0);
+    }
 
-    // Ease every joint toward the target.
+    // Ease every joint toward the target (the root by the short way round,
+    // so a finished spin or flip does not unwind).
     line cur = global rigPose[uuid];
+    line cur["root"] = animUnwrap(line cur["root"] as vec, line p["root"] as vec);
     for (line key, line v of line p) {
         line cur[line key] = animEase(line cur[line key] as vec, line v as vec, line k);
     }

@@ -31,8 +31,10 @@
 //      head up, leans the torso back
 //   y  about its up axis: + turns it to its left
 //   z  about its back axis: + tips its top to its left
-// The pose also has rootPos: vec, an offset of the root in skin pixels (rig
-// frame), for bobbing and crouching. Animations set the pose (rigSetJoint);
+// The pose also has offsets in skin pixels: rootPos moves the root (rig
+// frame, for bobbing, crouching and lunges), and neckPos, shoulderRPos,
+// shoulderLPos, hipRPos and hipLPos move a joint's pivot in the torso frame
+// (+X left, +Y up, +Z forward), so a limb can float away from the body. Animations set the pose (rigSetJoint);
 // the rig loop runs the animations (anim.tc) and draws the pose every tick.
 // The model faces where the player walks (rigFace), not where they look:
 // standing still, it keeps its last facing. The head looks where they look
@@ -78,7 +80,7 @@ function rigJoints(): list {
 
 /** A pose with every joint at rest. */
 function rigRestPose(): dict {
-    return {root: vec(0, 0, 0), rootPos: vec(0, 0, 0), neck: vec(0, 0, 0), shoulderR: vec(0, 0, 0), shoulderL: vec(0, 0, 0), hipR: vec(0, 0, 0), hipL: vec(0, 0, 0)};
+    return {root: vec(0, 0, 0), rootPos: vec(0, 0, 0), neck: vec(0, 0, 0), shoulderR: vec(0, 0, 0), shoulderL: vec(0, 0, 0), hipR: vec(0, 0, 0), hipL: vec(0, 0, 0), neckPos: vec(0, 0, 0), shoulderRPos: vec(0, 0, 0), shoulderLPos: vec(0, 0, 0), hipRPos: vec(0, 0, 0), hipLPos: vec(0, 0, 0)};
 }
 
 /** 1 when player `uuid` chose slim arms. */
@@ -309,14 +311,14 @@ function rigRender(uuid: str) {
     line T = rigTurn(line R, line pose["root"] as vec);
     rigPart(line ids[2], line T, 8, 12, 4, line root, line at);
 
-    rigLimb(line ids[1], line T, line root, vec(0, 6, 0), line pose["neck"] as vec, vec(0, -4, 0), 8, 8, 8, line at);
+    rigLimb(line ids[1], line T, line root, vec(0, 6, 0) + line pose["neckPos"] as vec, line pose["neck"] as vec, vec(0, -4, 0), 8, 8, 8, line at);
 
     line w = rigArmW(uuid);
     line sx = 4 + line w / 2;
-    rigLimb(line ids[3], line T, line root, vec(0 - line sx, 4, 0), line pose["shoulderR"] as vec, vec(0, 4, 0), line w, 12, 4, line at);
-    rigLimb(line ids[4], line T, line root, vec(line sx, 4, 0), line pose["shoulderL"] as vec, vec(0, 4, 0), line w, 12, 4, line at);
-    rigLimb(line ids[5], line T, line root, vec(-2, -6, 0), line pose["hipR"] as vec, vec(0, 6, 0), 4, 12, 4, line at);
-    rigLimb(line ids[6], line T, line root, vec(2, -6, 0), line pose["hipL"] as vec, vec(0, 6, 0), 4, 12, 4, line at);
+    rigLimb(line ids[3], line T, line root, vec(0 - line sx, 4, 0) + line pose["shoulderRPos"] as vec, line pose["shoulderR"] as vec, vec(0, 4, 0), line w, 12, 4, line at);
+    rigLimb(line ids[4], line T, line root, vec(line sx, 4, 0) + line pose["shoulderLPos"] as vec, line pose["shoulderL"] as vec, vec(0, 4, 0), line w, 12, 4, line at);
+    rigLimb(line ids[5], line T, line root, vec(-2, -6, 0) + line pose["hipRPos"] as vec, line pose["hipR"] as vec, vec(0, 6, 0), 4, 12, 4, line at);
+    rigLimb(line ids[6], line T, line root, vec(2, -6, 0) + line pose["hipLPos"] as vec, line pose["hipL"] as vec, vec(0, 6, 0), 4, 12, 4, line at);
 }
 
 /** Starts the rig loop unless it is already running. (rigBeat is 0 before
@@ -400,7 +402,7 @@ function rigPoseCommand(words: list) {
         }
     }
     if (words.len() < 5 || !(global rigPose[line uuid] as dict).hasKeys(words[2] as str)) {
-        default.sendMessage(s"<gray>Usage: <yellow>@pose JOINT X Y Z</yellow> or <yellow>@pose reset</yellow>. Joints: root, rootPos, neck, shoulderR, shoulderL, hipR, hipL.");
+        default.sendMessage(s"<gray>Usage: <yellow>@pose JOINT X Y Z</yellow> or <yellow>@pose reset</yellow>. Joints: root, neck, shoulderR, shoulderL, hipR, hipL, and offsets rootPos, neckPos, shoulderRPos, shoulderLPos, hipRPos, hipLPos.");
         return;
     }
     line v = vec(num.parse(words[3] as str), num.parse(words[4] as str), num.parse(words[5] as str));
