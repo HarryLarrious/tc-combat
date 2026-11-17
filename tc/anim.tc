@@ -4,7 +4,7 @@
 // the time in it, and crossfades between clips.
 //
 // Which clip plays:
-//   in the air     flip (a running jump), jump (rising), fall
+//   in the air     jump (rising), fall
 //   just landed    land
 //   moving         crouch (sneaking), run (sprinting or fast), walk; these
 //                  are cycles driven by the distance walked, so the steps
@@ -21,13 +21,12 @@
 
 /** Per player UUID: feet position last tick, cycle phase (0..1), the
  * player's own animation clock (ticks), ticks left counted as in the air,
- * ticks spent in the air, 1 during a front flip, ticks left of landing. */
+ * ticks spent in the air, ticks left of landing. */
 declare global animPrev: dict[vec];
 declare global animPhase: dict[num];
 declare global animClock: dict[num];
 declare global animAir: dict[num];
 declare global animAirT: dict[num];
-declare global animFlip: dict[num];
 declare global animLand: dict[num];
 /** Per player UUID: the emote playing and its tick. */
 declare global animEmote: dict[str];
@@ -50,17 +49,13 @@ declare global animOut: dict[dict];
 
 /** Horizontal speed (blocks per tick): above the first the player walks;
  * above the second, runs (normal movement is 0.215, so it runs, as in
- * Roblox); above the third, or sprinting, a jump is a front flip. */
+ * Roblox). */
 function animWalkMin(): num {
     return 0.03;
 }
 
 function animRunMin(): num {
     return 0.17;
-}
-
-function animFlipMin(): num {
-    return 0.26;
 }
 
 /** Ticks after an attack in which a click still continues the combo. */
@@ -80,7 +75,6 @@ function animForget(uuid: str) {
     global animClock.remove(uuid);
     global animAir.remove(uuid);
     global animAirT.remove(uuid);
-    global animFlip.remove(uuid);
     global animLand.remove(uuid);
     global animEmote.remove(uuid);
     global animEmoteT.remove(uuid);
@@ -248,18 +242,13 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
 
     // In the air: not grounded, or rising or falling (Is Grounded alone
     // misses jumps); held 3 ticks so the pose holds over the top of a jump.
-    // Taking off at a run flips; touching down starts the landing.
+    // Touching down starts the landing.
     line air = animGet(global animAir, uuid, 0);
     line airT = animGet(global animAirT, uuid, 0);
-    line flip = animGet(global animFlip, uuid, 0);
     line land = num.max(animGet(global animLand, uuid, 0) - 1, 0);
     if (grounded == 0 || num.abs(line d.y) > 0.02) {
         if (line air == 0) {
             line airT = 0;
-            line flip = 0;
-            if (line d.y > 0 && (line speed > animFlipMin() || sprint == 1)) {
-                line flip = 1;
-            }
         }
         line air = 3;
         line airT = line airT + 1;
@@ -267,12 +256,10 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
         line air = line air - 1;
         if (line air == 0) {
             line land = animLandTicks();
-            line flip = 0;
         }
     }
     global animAir[uuid] = line air;
     global animAirT[uuid] = line airT;
-    global animFlip[uuid] = line flip;
     global animLand[uuid] = line land;
 
     // The base clip and the time in it.
@@ -280,10 +267,7 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
     line u = 0;
     line moving = 1;
     if (line air > 0) {
-        if (line flip == 1) {
-            line clip = "flip";
-            line u = line airT / animLen("flip");
-        } else if (line d.y > 0) {
+        if (line d.y > 0) {
             line clip = "jump";
             line u = line airT / animLen("jump");
         } else {
@@ -366,7 +350,7 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
     }
 
     // Crossfade from the last pose when the clip changes. The start pose's
-    // root is wrapped, so a finished spin or flip does not unwind.
+    // root is wrapped, so a finished spin does not unwind.
     if (!global animOut.hasKeys(uuid)) {
         global animOut[uuid] = line target;
     }
@@ -407,10 +391,10 @@ function animTick(uuid: str, feet: vec, grounded: num, holding: num, sneak: num,
 
     // The head looks where the player looks, relative to the body (MC yaw
     // grows to the right and pitch downward; the neck's y + is left, x + up).
-    // (Not while the body spins or flips.)
+    // (Not while the body spins.)
     line pose = line out;
     line r = line out["root"] as vec;
-    if (line clip == "flip" || line clip == "w3") {
+    if (line clip == "w3") {
         global rigPose[uuid] = line pose;
         return;
     }

@@ -11,9 +11,9 @@
  "mask": [],
  "notes": "",
  "keys": [
-  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"shoulderR": [2, 0, 4], "shoulderL": [2, 0, -4], "hipR": [0, 0, 2], "hipL": [0, 0, -2]}},
-  {"t": 0.2, "lift": 0, "ease": "out", "pose": {"root": [-4, 20, 0], "shoulderR": [90, 5, 0], "shoulderL": [-8, 0, -8]}},
-  {"t": 0.8, "lift": 0, "ease": "smooth", "pose": {"root": [-4, 20, 0], "shoulderR": [88, 5, 0], "shoulderL": [-8, 0, -8]}},
-  {"t": 1, "lift": 0, "ease": "smooth", "pose": {"shoulderR": [2, 0, 4], "shoulderL": [2, 0, -4], "hipR": [0, 0, 2], "hipL": [0, 0, -2]}}
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"rootPos": [0, 0.1, 0], "shoulderR": [-3, -8.5, 4], "shoulderRPos": [0, 0.8, 0], "shoulderL": [-8, 11, -4], "shoulderLPos": [0, 0.8, 0], "hipR": [1, -16.5, 2], "hipRPos": [-0.7, 0.5, 2], "hipL": [-2, 35, -2], "hipLPos": [0.5, 0.6, 0.1]}},
+  {"t": 0.2, "lift": 0, "ease": "in", "pose": {"rootPos": [0, 0.1, 0], "shoulderR": [92, 6, -4], "shoulderRPos": [0.6, 0.2, 3.5], "shoulderL": [-12, 8, -8], "shoulderLPos": [0, -0.4, -1], "hipR": [1, -16.5, 2], "hipRPos": [-0.7, 0.5, 2], "hipL": [-2, 35, -2], "hipLPos": [0.5, 0.6, 0.1], "root": [-6, 24, 0], "neck": [4, 0, 0]}},
+  {"t": 0.8, "lift": 0, "ease": "smooth", "pose": {"rootPos": [0, 0.1, 0], "shoulderR": [92, 6, -4], "shoulderRPos": [0.6, 0.2, 3], "shoulderL": [-12, 8, -8], "shoulderLPos": [0, -0.4, -1], "hipR": [1, -16.5, 2], "hipRPos": [-0.7, 0.5, 2], "hipL": [-2, 35, -2], "hipLPos": [0.5, 0.6, 0.1], "root": [-6, 24, 0], "neck": [4, 0, 0]}},
+  {"t": 1, "lift": 0, "ease": "smooth", "pose": {"rootPos": [0, 0.1, 0], "shoulderR": [-3, -8.5, 4], "shoulderRPos": [0, 0.8, 0], "shoulderL": [-8, 11, -4], "shoulderLPos": [0, 0.8, 0], "hipR": [1, -16.5, 2], "hipRPos": [-0.7, 0.5, 2], "hipL": [-2, 35, -2], "hipLPos": [0.5, 0.6, 0.1]}}
  ]
 }

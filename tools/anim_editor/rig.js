@@ -156,7 +156,7 @@ export function poseAt(clip, t) {
 /** The head looking straight ahead (the game turns the neck back against
  * the torso so the head keeps looking where the player looks). */
 export function lookAhead(pose, clipName) {
-  if (clipName === "flip" || clipName === "w3") return pose;
+  if (clipName === "w3") return pose;
   const wrap = (a) => ((a + 180) % 360 + 360) % 360 - 180;
   const p = { ...pose };
   const r = pose.root;

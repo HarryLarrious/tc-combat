@@ -1,17 +1,17 @@
 {
  "name": "fall",
  "kind": "loop",
- "length": 16,
+ "length": 18,
  "interp": "spline",
  "planted": false,
  "counter": true,
- "fade": 5,
+ "fade": 4,
  "samples": 0,
  "emote": false,
  "mask": [],
  "notes": "",
  "keys": [
-  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-4, 0, 0], "shoulderR": [35, 0, 70], "shoulderL": [45, 0, -62], "hipR": [18, 0, 4], "hipL": [-10, 0, -4]}},
-  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [-4, 0, 0], "shoulderR": [45, 0, 62], "shoulderL": [35, 0, -70], "hipR": [-8, 0, 4], "hipL": [16, 0, -4]}}
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-5, 4, 0], "neck": [-4, 0, 0], "shoulderR": [50, 8, 62], "shoulderRPos": [-0.6, 1.2, 0.5], "shoulderL": [36, -12, -74], "shoulderLPos": [0.6, 1.4, -0.3], "hipR": [14, -6, 6], "hipRPos": [-0.4, 1.6, 1.8], "hipL": [-16, 10, -4], "hipLPos": [0.4, 0.6, -1]}},
+  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [-5, -4, 0], "neck": [-4, 0, 0], "shoulderL": [50, -8, -62], "shoulderLPos": [0.6, 1.2, 0.5], "shoulderR": [36, 12, 74], "shoulderRPos": [-0.6, 1.4, -0.3], "hipL": [14, 6, -6], "hipLPos": [0.4, 1.6, 1.8], "hipR": [-16, -10, 4], "hipRPos": [-0.4, 0.6, -1]}}
  ]
 }

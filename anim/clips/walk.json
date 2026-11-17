@@ -9,11 +9,11 @@
  "samples": 0,
  "emote": false,
  "mask": [],
- "notes": "R contact 0, passing 0.25, L contact 0.5, passing 0.75",
+ "notes": "R foot lands at 0 (L arm forward), passing .25, mirrored from .5 (styled after run)",
  "keys": [
-  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-4, -7, 0], "shoulderR": [-26, 0, 5], "shoulderL": [32, 0, -5], "hipR": [38, 0, 0], "hipL": [-36, 0, 0]}},
-  {"t": 0.25, "lift": 0, "ease": "smooth", "pose": {"root": [-5, 0, -1.5], "shoulderR": [0, 0, 5], "shoulderL": [6, 0, -5], "hipR": [-2, 0, 0], "hipL": [12, 0, 0], "hipLPos": [0, 2, 0.3]}},
-  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [-4, 7, 0], "shoulderL": [-26, 0, -5], "shoulderR": [32, 0, 5], "hipL": [38, 0, 0], "hipR": [-36, 0, 0]}},
-  {"t": 0.75, "lift": 0, "ease": "smooth", "pose": {"root": [-5, 0, 1.5], "shoulderL": [0, 0, -5], "shoulderR": [6, 0, 5], "hipL": [-2, 0, 0], "hipR": [12, 0, 0], "hipRPos": [0, 2, 0.3]}}
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"root": [-6, 12, 0], "neck": [1.5, -2, 0], "shoulderL": [38, -16, 6], "shoulderLPos": [-0.6, 0, 2.2], "shoulderR": [-32, -9, -8], "shoulderRPos": [0, -0.8, -2], "hipR": [22, -4, 3], "hipRPos": [-0.4, 0, 3], "hipL": [-22, 6, -3], "hipLPos": [0.4, 0.6, -3]}},
+  {"t": 0.25, "lift": 0, "ease": "smooth", "pose": {"root": [-6, -1.5, 0], "neck": [1.5, 0.3, 0], "shoulderL": [4, -5, 0], "shoulderLPos": [0, -0.2, -0.3], "shoulderR": [10, 7, 0], "shoulderRPos": [0, -0.1, 0], "hipR": [0, -2, 0], "hipRPos": [-0.3, 0, 0], "hipL": [10, 2, 0], "hipLPos": [0.3, 2.2, 0.6]}},
+  {"t": 0.5, "lift": 0, "ease": "smooth", "pose": {"root": [-6, -12, 0], "neck": [1.5, 2, 0], "shoulderR": [38, 16, -6], "shoulderRPos": [0.6, 0, 2.2], "shoulderL": [-32, 9, 8], "shoulderLPos": [0, -0.8, -2], "hipL": [22, 4, -3], "hipLPos": [0.4, 0, 3], "hipR": [-22, -6, 3], "hipRPos": [-0.4, 0.6, -3]}},
+  {"t": 0.75, "lift": 0, "ease": "smooth", "pose": {"root": [-6, 1.5, 0], "neck": [1.5, -0.3, 0], "shoulderR": [4, 5, 0], "shoulderRPos": [0, -0.2, -0.3], "shoulderL": [10, -7, 0], "shoulderLPos": [0, -0.1, 0], "hipL": [0, 2, 0], "hipLPos": [0.3, 0, 0], "hipR": [10, -2, 0], "hipRPos": [-0.3, 2.2, 0.6]}}
  ]
 }

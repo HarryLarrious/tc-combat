@@ -35,7 +35,7 @@ import rig_fk  # noqa: E402
 # Clips the game's code plays by name (tc/anim.tc): they can be edited but
 # not deleted or renamed.
 GAME_CLIPS = ["idle", "walk", "run", "crouchIdle", "crouch", "stance", "hold", "jump", "fall", "land",
-              "flip", "w1", "w2", "w3", "f1", "f2", "f3"]
+              "w1", "w2", "w3", "f1", "f2", "f3"]
 SCRIPTS = Path.home() / ".claude/skills/terracotta/scripts"
 MAX_BYTES = 1_000_000
 

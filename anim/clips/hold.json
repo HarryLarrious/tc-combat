@@ -11,6 +11,6 @@
  "mask": ["shoulderR", "shoulderRPos"],
  "notes": "",
  "keys": [
-  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"shoulderR": [40, 0, 12]}}
+  {"t": 0, "lift": 0, "ease": "smooth", "pose": {"shoulderR": [42, 22, -6], "shoulderRPos": [0.4, 0.3, 1.8]}}
  ]
 }
