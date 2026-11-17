@@ -1,0 +1,35 @@
+// Chat commands and the join and leave events. Add new commands here: a
+// project has one command event.
+
+playerevent join {
+    packSend();
+    rigHideAllFrom();
+    rigSpawn();
+}
+
+playerevent leave {
+    rigRemove(default.uuid);
+}
+
+playerevent command {
+    line words = event.command.split(" ");
+    line cmd = (line words[1] as str).replace("@", "");
+    if (line cmd == "rig") {
+        // @rig: puts your player model up, or takes it down
+        if (rigHas(default.uuid) == 1) {
+            rigRemove(default.uuid);
+            default.sendMessage(s"<gray>Player model off.");
+        } else {
+            rigSpawn();
+            default.sendMessage(s"<gray>Player model on.");
+        }
+    } else if (line cmd == "slim") {
+        rigSlimToggle();
+    } else if (line cmd == "pose") {
+        rigPoseCommand(line words);
+    } else if (line cmd == "pack") {
+        packSend();
+    } else {
+        default.sendMessage(s"<gray>Commands: <yellow>@rig</yellow>, <yellow>@slim</yellow>, <yellow>@pose JOINT X Y Z</yellow>, <yellow>@pose reset</yellow>, <yellow>@pack</yellow>.");
+    }
+}

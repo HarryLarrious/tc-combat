@@ -1,0 +1,21 @@
+// The resource pack: every player gets it on join, and @pack sends it again.
+
+/** The published pack (tools/build_pack.py rewrites this URL on every build). */
+function packUrl(): str {
+    return "https://raw.githubusercontent.com/HarryLarrious/tc-combat/pack-dist/combat-pack-5219d7ec514f.zip";
+}
+
+/** Sends the resource pack to the player. */
+function packSend {
+    if (packUrl() != "") {
+        default.sendResourcePack(packUrl());
+    }
+}
+
+playerevent resourcePackLoad {
+    default.sendMessage(s"<green>Pack loaded.</green> <gray>Type <yellow>@rig</yellow> to toggle your player model.");
+}
+
+playerevent resourcePackDecline {
+    default.sendMessage(s"<red>Resource pack declined.</red> <gray>The player model is drawn by it. Allow server resource packs and type <yellow>@pack</yellow>.");
+}

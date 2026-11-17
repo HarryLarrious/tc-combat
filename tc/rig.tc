@@ -1,0 +1,343 @@
+// The player model: an R6-style rig drawn in the player's own skin.
+//
+// Six item displays each hold the player's head. The pack's core shader
+// (pack/assets/minecraft/shaders/core/entity.*, from tc-rally_game) draws a
+// head as another body part when the display's brightness override marks it:
+// sky light 0, block light = part id (1 head, 2 torso, 3/4 right/left arm,
+// 5/6 right/left leg, 7/8 slim right/left arm). The item model
+// combat:body/unit scales the head to a unit cube centered on its origin, and
+// each part's display matrix stretches that cube to the part's size.
+//
+// The rig is built like a Roblox R6 character. The torso hangs from the root
+// (the HumanoidRootPart: the torso's center), and the other five parts hang
+// from the torso on Motor6D-style joints:
+//
+//   joint      parent  child   C0 (in the torso)   C1 (in the child)
+//   root       -       torso   0, 0, 0             0, 0, 0
+//   neck       torso   head    0, 6, 0             0, -4, 0
+//   shoulderR  torso   armR    -(4 + w/2), 4, 0    0, 4, 0
+//   shoulderL  torso   armL    4 + w/2, 4, 0       0, 4, 0
+//   hipR       torso   legR    -2, -6, 0           0, 6, 0
+//   hipL       torso   legL    2, -6, 0            0, 6, 0
+//
+// (skin pixels, rig frame: +X left, +Y up, +Z forward; w is the arm width,
+// 4 or 3 for slim arms). A joint's pivot is C0 in its parent. The child is
+// turned about the pivot by the joint's pose angle and placed so its own C1
+// point sits on the pivot.
+//
+// A pose is a dict of joint name -> vec(x, y, z) in degrees, turned in that
+// order about the part's own axes, as Roblox's CFrame.Angles does:
+//   x  about the part's right axis: + raises an arm or leg forward, tips the
+//      head up, leans the torso back
+//   y  about its up axis: + turns it to its left
+//   z  about its back axis: + tips its top to its left
+// The pose also has rootPos: vec, an offset of the root in skin pixels (rig
+// frame), for bobbing and crouching. Animations set the pose (rigSetJoint);
+// the rig loop draws it every tick, with the head also following the
+// player's look (rigLookPitch).
+//
+// The real player is hidden while their model is up: from the others with
+// Set Entity Hidden, from themselves (third person) with invisibility. The
+// shader drops the model's head when the camera is inside it, so first person
+// sees the body. Held items still draw on the real (invisible) player.
+
+/** Per player UUID: the model's display UUIDs [head, torso, right arm, left
+ * arm, right leg, left leg]. */
+declare global rigOf: dict[list];
+/** Per player UUID: the pose (see above). */
+declare global rigPose: dict[dict];
+/** Per player UUID: 1 for slim (3 px) arms. */
+declare saved rigSlim: dict[num];
+/** The rig loop's id (a newer loop ends the older one) and its last tick. */
+declare global rigLoopId: num;
+declare global rigBeat: num;
+
+/** One skin pixel in blocks: 32 px tall = 1.8 blocks, as the player. */
+function rigPx(): num {
+    return 0.05625;
+}
+
+/** How much of the player's look pitch the head follows (0 to 1); the
+ * neck is held between 60 degrees down and 70 up. */
+function rigLookPitch(): num {
+    return 1;
+}
+
+/** The joint names, in the order of the parts they move (head, arms, legs). */
+function rigJoints(): list {
+    return ["neck", "shoulderR", "shoulderL", "hipR", "hipL"];
+}
+
+/** A pose with every joint at rest. */
+function rigRestPose(): dict {
+    return {root: vec(0, 0, 0), rootPos: vec(0, 0, 0), neck: vec(0, 0, 0), shoulderR: vec(0, 0, 0), shoulderL: vec(0, 0, 0), hipR: vec(0, 0, 0), hipL: vec(0, 0, 0)};
+}
+
+/** 1 when player `uuid` chose slim arms. */
+function rigSlimOf(uuid: str): num {
+    if (saved rigSlim.hasKeys(uuid)) {
+        return saved rigSlim[uuid];
+    }
+    return 0;
+}
+
+/** Arm width in skin pixels for player `uuid`. */
+function rigArmW(uuid: str): num {
+    if (rigSlimOf(uuid) == 1) {
+        return 3;
+    }
+    return 4;
+}
+
+/** 1 when player `uuid` has a model up. */
+function rigHas(uuid: str): num {
+    if (global rigOf.hasKeys(uuid)) {
+        return 1;
+    }
+    return 0;
+}
+
+/** Sets joint `joint` (a name from rigRestPose) of player `uuid`'s pose:
+ * angles in degrees, or for rootPos an offset in skin pixels. */
+function rigSetJoint(uuid: str, joint: str, v: vec) {
+    if (!global rigPose.hasKeys(uuid)) {
+        return;
+    }
+    line p = global rigPose[uuid];
+    line p[joint] = v;
+    global rigPose[uuid] = line p;
+}
+
+/** Puts every joint of player `uuid`'s pose back at rest. */
+function rigResetPose(uuid: str) {
+    if (global rigPose.hasKeys(uuid)) {
+        global rigPose[uuid] = rigRestPose();
+    }
+}
+
+/** Spawns the model of the player (default) and hides the real player. */
+function rigSpawn {
+    line uuid = default.uuid;
+    rigRemove(line uuid);
+    line at = default.location;
+    line arm = 3;
+    if (rigSlimOf(line uuid) == 1) {
+        line arm = 7;
+    }
+    line marks = [1, 2, line arm, line arm + 1, 5, 6];
+    line head = item("player_head").setHeadTexture(line uuid).setModel("combat:body/unit");
+    line ids = [];
+    for (line mark of line marks) {
+        game.spawnItemDisplay(loc(line at.x, line at.y, line at.z), line head);
+        lastEntity.setDisplayTeleportDuration(1);
+        lastEntity.setDisplayBrightness(line mark as num, 0);
+        lastEntity.setDisplayViewRange(160);
+        line ids.append(lastEntity.uuid);
+    }
+    global rigOf[line uuid] = line ids;
+    global rigPose[line uuid] = rigRestPose();
+    rigHide(line uuid, 1);
+    default.givePotionEffect(pot("Invisibility", 1, 1000000), showIcon="False", particles="None");
+    rigEnsureLoop();
+    rigRender(line uuid);
+}
+
+/** Removes the model of player `uuid` and shows the real player again. The
+ * player may have left: only the displays and the hiding are undone then. */
+function rigRemove(uuid: str) {
+    if (!global rigOf.hasKeys(uuid)) {
+        return;
+    }
+    for (line id of global rigOf[uuid] as list) {
+        select entitiesByName(line id as str);
+        selectedEntity.remove();
+        select reset;
+    }
+    global rigOf.remove(uuid);
+    global rigPose.remove(uuid);
+    rigHide(uuid, 0);
+    // (Selects nobody when the player has left.)
+    select playersByName(uuid);
+    selected.removePotionEffect(pot("Invisibility"));
+    select reset;
+}
+
+/** Hides (1) or shows (0) player `uuid` to every other player. */
+function rigHide(uuid: str, hide: num) {
+    select !playersByName(uuid);
+    if (hide == 1) {
+        selected.setEntityHidden([uuid], hidden="Enable");
+    } else {
+        selected.setEntityHidden([uuid], hidden="Disable");
+    }
+    select reset;
+}
+
+/** Hides every player with a model from the player (default) who just
+ * joined. */
+function rigHideAllFrom {
+    for (line uuid, line ids of global rigOf) {
+        default.setEntityHidden([line uuid], hidden="Enable");
+    }
+}
+
+/** Turns basis [l, u, f] by the angles a (degrees: x about its right, then
+ * y about its up, then z about its back; see the pose above). */
+function rigTurn(B: list, a: vec): list {
+    line l = B[1] as vec;
+    line u = B[2] as vec;
+    line f = B[3] as vec;
+    if (a.x != 0) {
+        line c = num.cos(a.x);
+        line s = num.sin(a.x);
+        line u2: vec = line u * line c - line f * line s;
+        line f = line f * line c + line u * line s;
+        line u = line u2;
+    }
+    if (a.y != 0) {
+        line c = num.cos(a.y);
+        line s = num.sin(a.y);
+        line f2: vec = line f * line c + line l * line s;
+        line l = line l * line c - line f * line s;
+        line f = line f2;
+    }
+    if (a.z != 0) {
+        line c = num.cos(a.z);
+        line s = num.sin(a.z);
+        line u2: vec = line u * line c + line l * line s;
+        line l = line l * line c - line u * line s;
+        line u = line u2;
+    }
+    return [line l, line u, line f];
+}
+
+/** A point given in skin pixels in basis B, as a world offset (blocks). */
+function rigAt(B: list, p: vec): vec {
+    return ((B[1] as vec) * p.x + (B[2] as vec) * p.y + (B[3] as vec) * p.z) * rigPx();
+}
+
+/** Sets display `id` (standing at `at`) to show a box of size (sx, sy, sz)
+ * skin pixels in basis B, centered at c (world). */
+function rigPart(id: str, B: list, sx: num, sy: num, sz: num, c: vec, at: vec) {
+    line px = rigPx();
+    line a = (B[1] as vec) * (0 - sx * line px);
+    line b = (B[2] as vec) * (sy * line px);
+    line d = (B[3] as vec) * (0 - sz * line px);
+    line t = c - at;
+    select entitiesByName(id);
+    selectedEntity.setDisplayTransformationMatrix([line a.x, line b.x, line d.x, line t.x, line a.y, line b.y, line d.y, line t.y, line a.z, line b.z, line d.z, line t.z, 0, 0, 0, 1]);
+    selectedEntity.setDisplayInterpolation(1, 0);
+    select reset;
+}
+
+/** Draws child part `id` of size (sx, sy, sz) on a joint of the torso
+ * (basis T, center tc): pivot c0 in the torso, angles a, child point c1. */
+function rigLimb(id: str, T: list, tc: vec, c0: vec, a: vec, c1: vec, sx: num, sy: num, sz: num, at: vec) {
+    line pivot = tc + rigAt(T, c0);
+    line B = rigTurn(T, a);
+    rigPart(id, line B, sx, sy, sz, line pivot - rigAt(line B, c1), at);
+}
+
+/** Draws player `uuid`'s model where the player stands, in their pose. */
+function rigRender(uuid: str) {
+    select playersByName(uuid);
+    if (game.selectionSize == 0) {
+        select reset;
+        rigRemove(uuid);
+        return;
+    }
+    line feet = selected.location;
+    line yaw = selected.yaw;
+    line pitch = selected.pitch;
+    select reset;
+    line ids = global rigOf[uuid] as list[str];
+    line pose = global rigPose[uuid];
+    line at = vec(line feet.x, line feet.y, line feet.z);
+    select entitiesByName(line ids);
+    selectedEntity.teleport(loc(line feet.x, line feet.y, line feet.z));
+    select reset;
+
+    // The root: the torso's center, 18 px above the feet, facing the
+    // player's yaw (MC yaw 0 faces +Z, 90 faces -X).
+    line f0 = vec(0 - num.sin(line yaw), 0, num.cos(line yaw));
+    line u0 = vec(0, 1, 0);
+    line R = [line u0.cross(line f0), line u0, line f0];
+    line root = line at + rigAt(line R, vec(0, 18, 0) + line pose["rootPos"] as vec);
+    line T = rigTurn(line R, line pose["root"] as vec);
+    rigPart(line ids[2], line T, 8, 12, 4, line root, line at);
+
+    // The head follows the look (MC pitch + is down; the neck's x + is up).
+    line neck = (line pose["neck"] as vec) + vec(num.clamp(0 - line pitch * rigLookPitch(), -60, 70), 0, 0);
+    rigLimb(line ids[1], line T, line root, vec(0, 6, 0), line neck, vec(0, -4, 0), 8, 8, 8, line at);
+
+    line w = rigArmW(uuid);
+    line sx = 4 + line w / 2;
+    rigLimb(line ids[3], line T, line root, vec(0 - line sx, 4, 0), line pose["shoulderR"] as vec, vec(0, 4, 0), line w, 12, 4, line at);
+    rigLimb(line ids[4], line T, line root, vec(line sx, 4, 0), line pose["shoulderL"] as vec, vec(0, 4, 0), line w, 12, 4, line at);
+    rigLimb(line ids[5], line T, line root, vec(-2, -6, 0), line pose["hipR"] as vec, vec(0, 6, 0), 4, 12, 4, line at);
+    rigLimb(line ids[6], line T, line root, vec(2, -6, 0), line pose["hipL"] as vec, vec(0, 6, 0), 4, 12, 4, line at);
+}
+
+/** Starts the rig loop unless it is already running. */
+function rigEnsureLoop {
+    if (game.ticksSinceStartup - global rigBeat > 5) {
+        start rigLoop;
+    }
+}
+
+/** Every tick: draws every model. */
+process rigLoop {
+    global rigLoopId += 1;
+    line myId = global rigLoopId;
+    repeat {
+        // a newer loop was started: let this one end
+        if (global rigLoopId != line myId) {
+            break;
+        }
+        global rigBeat = game.ticksSinceStartup;
+        for (line uuid, line ids of global rigOf) {
+            rigRender(line uuid as str);
+        }
+        wait;
+    }
+}
+
+/** @slim: toggles slim (3 px) arms for the player's model. */
+function rigSlimToggle {
+    line uuid = default.uuid;
+    if (rigSlimOf(line uuid) == 1) {
+        saved rigSlim[line uuid] = 0;
+        default.sendMessage(s"<gray>Classic (4 px) arms.");
+    } else {
+        saved rigSlim[line uuid] = 1;
+        default.sendMessage(s"<gray>Slim (3 px) arms.");
+    }
+    if (rigHas(line uuid) == 1) {
+        rigSpawn();
+    }
+}
+
+/** @pose JOINT X Y Z | @pose reset: sets a joint of the player's own model
+ * (testing; see rigRestPose for the joint names). */
+function rigPoseCommand(words: list) {
+    line uuid = default.uuid;
+    if (rigHas(line uuid) == 0) {
+        default.sendMessage(s"<red>No model up.</red> <gray>Type <yellow>@rig</yellow> first.");
+        return;
+    }
+    if (words.len() >= 2) {
+        if (words[2] as str == "reset") {
+            rigResetPose(line uuid);
+            default.sendMessage(s"<gray>Pose reset.");
+            return;
+        }
+    }
+    if (words.len() < 5 || !(global rigPose[line uuid] as dict).hasKeys(words[2] as str)) {
+        default.sendMessage(s"<gray>Usage: <yellow>@pose JOINT X Y Z</yellow> or <yellow>@pose reset</yellow>. Joints: root, rootPos, neck, shoulderR, shoulderL, hipR, hipL.");
+        return;
+    }
+    line v = vec(num.parse(words[3] as str), num.parse(words[4] as str), num.parse(words[5] as str));
+    line joint = words[2] as str;
+    rigSetJoint(line uuid, line joint, line v);
+    default.sendMessage(s"<gray>%var(joint) = %var(v)");
+}
